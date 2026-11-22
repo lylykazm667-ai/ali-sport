@@ -763,20 +763,30 @@ private fun FullScreenStreamPlayer(
         channel.url
     }
 
-    var isLandscape by remember { mutableStateOf(false) }
+    var showControls by remember { mutableStateOf(true) }
 
-    fun setLandscapeMode(enable: Boolean) {
-        isLandscape = enable
-        activity?.requestedOrientation = if (enable) {
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    LaunchedEffect(showControls) {
+        if (showControls) {
+            delay(3000)
+            showControls = false
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(activity) {
+        val window = activity?.window
+        val previousOrientation = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        val insetsController = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        insetsController?.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        insetsController?.hide(WindowInsetsCompat.Type.systemBars())
+
         onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            insetsController?.show(WindowInsetsCompat.Type.systemBars())
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            activity?.requestedOrientation = previousOrientation
         }
     }
 
@@ -798,50 +808,50 @@ private fun FullScreenStreamPlayer(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .clickable { showControls = !showControls }
     ) {
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     player = exoPlayer
-                    useController = true
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
                 }
             },
             update = { playerView ->
                 playerView.player = exoPlayer
+                playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
             },
             modifier = Modifier.fillMaxSize()
         )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopCenter)
-                .background(Color.Black.copy(alpha = 0.55f))
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = {
-                    setLandscapeMode(false)
-                    onBackToChannels()
-                }) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "رجوع",
-                        tint = Color.White
+        if (showControls) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBackToChannels) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "رجوع",
+                            tint = Color.White
+                        )
+                    }
+                    Text(
+                        text = channel.name,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        maxLines = 1
                     )
                 }
-                Text(
-                    text = channel.name,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 1
-                )
-            }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!channel.backupUrl.isNullOrBlank()) {
                     Text(
                         text = if (useBackupStream) "الأساسي" else "احتياطي",
@@ -855,19 +865,11 @@ private fun FullScreenStreamPlayer(
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     )
                 }
-
-                IconButton(onClick = { setLandscapeMode(!isLandscape) }) {
-                    Text(
-                        text = if (isLandscape) "↙" else "⛶",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
     }
 }
+
 
 @Composable
 private fun StreamVideoPlayer(
