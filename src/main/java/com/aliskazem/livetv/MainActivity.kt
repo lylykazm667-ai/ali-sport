@@ -638,6 +638,7 @@ fun AliKazemSportApp(
         1 -> MatchesScheduleView(matches = matches)
         else -> AccountsTabView()
     }
+  }
 }
 
 }
