@@ -1048,7 +1048,8 @@ private fun CategoryChannelsListView(
             }
         }
 val channelRows = category.channels.chunked(2)
-itemsIndexed(channelRows) { rowIndex, rowChannels ->
+items(channelRows.size) { rowIndex ->
+    val rowChannels = channelRows[rowIndex]
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1109,11 +1110,8 @@ itemsIndexed(channelRows) { rowIndex, rowChannels ->
             }
         }
 
-        if (rowChannels.size == 1) {
+                if (rowChannels.size == 1) {
             Spacer(modifier = Modifier.weight(1f))
-        }
-    }
-}
         }
     }
 }
