@@ -821,28 +821,27 @@ DisposableEffect(exoPlayer) {
     }
 }
 
-Box(
-    modifier = Modifier
-        .fillMaxSize()
-        .background(Color.Black)
-        .clickable { showControls = !showControls }
-) {
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = false
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-            }
-        },
-        update = { playerView ->
-            playerView.player = exoPlayer
-            playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-        },
-        modifier = Modifier.fillMaxSize()
-    )
-
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .clickable { showControls = !showControls }
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                }
+            },
+            update = { playerView ->
+                playerView.player = exoPlayer
+                playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+            },
+            modifier = Modifier.fillMaxSize()
         )
+    }
 
         if (showControls) {
             Row(
