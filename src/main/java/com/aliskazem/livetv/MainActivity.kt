@@ -589,48 +589,57 @@ fun AliKazemSportApp(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            when (selectedTab) {
-                2 -> {
-                    val currentCategory = activeCategory
-                    if (currentCategory == null) {
-                        CategoriesGridView(
-                            categories = categories,
-                            selectedChannel = selectedChannel,
-                            useBackupStream = useBackupStream,
-                            onToggleBackup = { useBackupStream = !useBackupStream },
-                            onClearChannel = {
-                                selectedChannel = null
-                                useBackupStream = false
-                            },
-                            onSelectCategory = { cat ->
-                                activeCategory = cat
-                            }
-                        )
-                    } else {
-                        CategoryChannelsListView(
-                            category = currentCategory,
-                            selectedChannel = selectedChannel,
-                            useBackupStream = useBackupStream,
-                            onToggleBackup = { useBackupStream = !useBackupStream },
-                            onBackToCategories = { activeCategory = null },
-                            onSelectChannel = { ch ->
-                                selectedChannel = ch
-                                useBackupStream = false
-                            },
-                            onClearChannel = {
-                                selectedChannel = null
-                                useBackupStream = false
-                            }
-                        )
+            if (selectedChannel != null) {
+    FullScreenStreamPlayer(
+        channel = selectedChannel!!,
+        useBackupStream = useBackupStream,
+        onToggleBackup = { useBackupStream = !useBackupStream },
+        onBackToChannels = {
+            selectedChannel = null
+            useBackupStream = false
+        }
+    )
+} else {
+    when (selectedTab) {
+        2 -> {
+            val currentCategory = activeCategory
+            if (currentCategory == null) {
+                CategoriesGridView(
+                    categories = categories,
+                    selectedChannel = selectedChannel,
+                    useBackupStream = useBackupStream,
+                    onToggleBackup = { useBackupStream = !useBackupStream },
+                    onClearChannel = {
+                        selectedChannel = null
+                        useBackupStream = false
+                    },
+                    onSelectCategory = { cat ->
+                        activeCategory = cat
                     }
-                }
-
-                1 -> MatchesScheduleView(matches = matches)
-
-                else -> AccountsTabView()
+                )
+            } else {
+                CategoryChannelsListView(
+                    category = currentCategory,
+                    selectedChannel = selectedChannel,
+                    useBackupStream = useBackupStream,
+                    onToggleBackup = { useBackupStream = !useBackupStream },
+                    onBackToCategories = { activeCategory = null },
+                    onSelectChannel = { ch ->
+                        selectedChannel = ch
+                        useBackupStream = false
+                    },
+                    onClearChannel = {
+                        selectedChannel = null
+                        useBackupStream = false
+                    }
+                )
             }
         }
+        1 -> MatchesScheduleView(matches = matches)
+        else -> AccountsTabView()
     }
+}
+
 }
 
 @Composable
