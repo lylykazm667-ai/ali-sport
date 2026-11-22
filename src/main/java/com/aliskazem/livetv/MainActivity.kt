@@ -34,7 +34,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-
+import android.view.WindowManager
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.media3.ui.AspectRatioFrameLayout
+import kotlinx.coroutines.delay
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
 }
