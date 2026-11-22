@@ -1022,17 +1022,6 @@ private fun CategoryChannelsListView(
             }
         }
 
-        if (selectedChannel != null) {
-            item(key = "selected_banner_list") {
-                SelectedStreamBanner(
-                    channel = selectedChannel,
-                    useBackupStream = useBackupStream,
-                    onToggleBackup = onToggleBackup,
-                    onClose = onClearChannel
-                )
-            }
-        }
-
         items(category.channels, key = { it.id }) { channel ->
             val isSelected = selectedChannel?.id == channel.id
             Row(
