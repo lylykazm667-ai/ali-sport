@@ -1047,62 +1047,73 @@ private fun CategoryChannelsListView(
                 )
             }
         }
-
-        items(category.channels, key = { it.id }) { channel ->
+val channelRows = category.channels.chunked(2)
+itemsIndexed(channelRows) { rowIndex, rowChannels ->
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        rowChannels.forEachIndexed { colIndex, channel ->
             val isSelected = selectedChannel?.id == channel.id
-            Row(
+            val channelNumber = rowIndex * 2 + colIndex + 1
+
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(if (isSelected) Color(0xFF0E2419) else PanelBg)
+                    .background(if (isSelected) Color(0xFF0F2A1E) else PanelBg)
                     .border(
                         width = if (isSelected) 1.5.dp else 1.dp,
                         color = if (isSelected) ActiveGreen else BorderGreen,
                         shape = RoundedCornerShape(16.dp)
                     )
                     .clickable { onSelectChannel(channel) }
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                ChannelOrCategoryArtwork(
-                    assetName = channel.logoAssetName,
-                    contentDescription = channel.name,
-                    badgeText = channel.name.take(2).uppercase(),
-                    badgeBg = TileInnerBg,
-                    badgeTextColor = ActiveGreen,
-                    modifier = Modifier.width(74.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = channel.name,
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = "الشعار: ${channel.logoAssetName} • ${if (!channel.backupUrl.isNullOrBlank()) "يدعم رابط احتياطي" else "رابط أساسي"}",
-                        color = TextMuted,
-                        fontSize = 11.sp
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(105.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black.copy(alpha = 0.35f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ChannelOrCategoryArtwork(
+                        assetName = channel.logoAssetName,
+                        contentDescription = channel.name,
+                        badgeText = channel.name.take(2).uppercase(),
+                        badgeBg = TileInnerBg,
+                        badgeTextColor = ActiveGreen,
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = if (isSelected) "محدد" else "اختيار",
-                    color = if (isSelected) Color.White else ActiveGreen,
+                    text = "قناة $channelNumber",
+                    color = TextMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1
+                )
+
+                Text(
+                    text = channel.name,
+                    color = TextWhite,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) ActiveGreen else ActiveGreen.copy(alpha = 0.14f))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center
                 )
             }
+        }
+
+        if (rowChannels.size == 1) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
         }
     }
 }
