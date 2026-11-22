@@ -705,6 +705,10 @@ private fun SelectedStreamBanner(
             fontSize = 11.sp,
             maxLines = 1
         )
+if (activeUrl.isNotBlank()) {
+    Spacer(modifier = Modifier.height(8.dp))
+    StreamVideoPlayer(streamUrl = activeUrl)
+}
 
         if (!channel.backupUrl.isNullOrBlank()) {
             Text(
