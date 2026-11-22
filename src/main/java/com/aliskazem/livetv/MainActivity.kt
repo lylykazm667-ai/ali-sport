@@ -509,14 +509,25 @@ fun AliKazemSportApp(
                         .border(2.dp, ActiveGreen, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Ali Kazem\nSPORTS",
-                        color = Color(0xFFE8F5E9),
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 9.sp
-                    )
+                        val logoDrawableId = rememberDrawableId(appLogoAsset)
+    if (logoDrawableId != 0) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(id = logoDrawableId),
+            contentDescription = "Ali Kazem SPORTS",
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+    } else {
+        Text(
+            text = "Ali Kazem\nSPORTS",
+            color = Color(0xFFFEF5E9),
+            fontSize = 8.sp,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
+            lineHeight = 9.sp
+        )
+    }
+
                 }
             }
 
