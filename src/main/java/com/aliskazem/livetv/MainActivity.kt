@@ -1,8 +1,10 @@
 package com.aliskazem.livetv
+
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.os.Build
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -31,15 +33,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
-import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
+
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
 }
@@ -636,7 +638,8 @@ fun AliKazemSportApp(
             }
         }
     }
-    
+}
+
 @Composable
 private fun TopNavTab(
     label: String,
@@ -772,53 +775,53 @@ private fun FullScreenStreamPlayer(
     }
 
     DisposableEffect(activity) {
-    val window = activity?.window
-    val previousOrientation =
-        activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-    val insetsController = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+        val window = activity?.window
+        val previousOrientation =
+            activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        val insetsController = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
 
-    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-    window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-    if (window != null) {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-    }
+        if (window != null) {
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+        }
 
-    insetsController?.systemBarsBehavior =
-        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        insetsController?.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        window?.attributes?.layoutInDisplayCutoutMode =
-            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        window?.attributes = window?.attributes
-    }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window?.attributes?.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            window?.attributes = window?.attributes
+        }
 
-    insetsController?.hide(
-        WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
-    )
-
-    onDispose {
-        insetsController?.show(
+        insetsController?.hide(
             WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
         )
-        window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        activity?.requestedOrientation = previousOrientation
-    }
-}
 
-val exoPlayer = remember(activeUrl) {
-    ExoPlayer.Builder(context).build().apply {
-        setMediaItem(MediaItem.fromUri(activeUrl))
-        prepare()
-        playWhenReady = true
+        onDispose {
+            insetsController?.show(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            activity?.requestedOrientation = previousOrientation
+        }
     }
-}
 
-DisposableEffect(exoPlayer) {
-    onDispose {
-        exoPlayer.release()
+    val exoPlayer = remember(activeUrl) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(activeUrl))
+            prepare()
+            playWhenReady = true
+        }
     }
-}
+
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -885,7 +888,6 @@ DisposableEffect(exoPlayer) {
         }
     }
 }
-
 
 @Composable
 private fun StreamVideoPlayer(
@@ -1046,71 +1048,74 @@ private fun CategoryChannelsListView(
                 )
             }
         }
-val channelRows = category.channels.chunked(2)
-items(channelRows.size) { rowIndex ->
-    val rowChannels = channelRows[rowIndex]
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        rowChannels.forEachIndexed { colIndex, channel ->
-            val isSelected = selectedChannel?.id == channel.id
-            val channelNumber = rowIndex * 2 + colIndex + 1
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (isSelected) Color(0xFF0F2A1E) else PanelBg)
-                    .border(
-                        width = if (isSelected) 1.5.dp else 1.dp,
-                        color = if (isSelected) ActiveGreen else BorderGreen,
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .clickable { onSelectChannel(channel) }
-                    .padding(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+        val channelRows = category.channels.chunked(2)
+        items(channelRows.size) { rowIndex ->
+            val rowChannels = channelRows[rowIndex]
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(105.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black.copy(alpha = 0.35f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    ChannelOrCategoryArtwork(
-                        assetName = channel.logoAssetName,
-                        contentDescription = channel.name,
-                        badgeText = channel.name.take(2).uppercase(),
-                        badgeBg = TileInnerBg,
-                        badgeTextColor = ActiveGreen,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                rowChannels.forEachIndexed { colIndex, channel ->
+                    val isSelected = selectedChannel?.id == channel.id
+                    val channelNumber = rowIndex * 2 + colIndex + 1
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (isSelected) Color(0xFF0F2A1E) else PanelBg)
+                            .border(
+                                width = if (isSelected) 1.5.dp else 1.dp,
+                                color = if (isSelected) ActiveGreen else BorderGreen,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .clickable { onSelectChannel(channel) }
+                            .padding(10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(105.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.Black.copy(alpha = 0.35f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ChannelOrCategoryArtwork(
+                                assetName = channel.logoAssetName,
+                                contentDescription = channel.name,
+                                badgeText = channel.name.take(2).uppercase(),
+                                badgeBg = TileInnerBg,
+                                badgeTextColor = ActiveGreen,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "قناة $channelNumber",
+                            color = TextMuted,
+                            fontSize = 11.sp,
+                            maxLines = 1
+                        )
+
+                        Text(
+                            text = channel.name,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "قناة $channelNumber",
-                    color = TextMuted,
-                    fontSize = 11.sp,
-                    maxLines = 1
-                )
-
-                Text(
-                    text = channel.name,
-                    color = TextWhite,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
                 if (rowChannels.size == 1) {
-            Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
