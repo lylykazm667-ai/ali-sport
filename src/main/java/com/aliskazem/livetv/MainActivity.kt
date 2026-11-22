@@ -880,6 +880,16 @@ private fun CategoryChannelsListView(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                        ChannelOrCategoryArtwork(
+            assetName = channel.logoAssetName,
+            contentDescription = channel.name,
+            badgeText = channel.name.take(2).uppercase(),
+            badgeBg = TileInnerBg,
+            badgeTextColor = ActiveGreen,
+            modifier = Modifier.width(74.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = channel.name,
