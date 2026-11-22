@@ -599,6 +599,7 @@ fun AliKazemSportApp(
             useBackupStream = false
         }
     )
+            }
 } else {
     when (selectedTab) {
         2 -> {
