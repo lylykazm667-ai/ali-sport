@@ -12,5 +12,7 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
+
 rootProject.name = "LiveTV"
 include(":app")
+project(":app").projectDir = file(".")
