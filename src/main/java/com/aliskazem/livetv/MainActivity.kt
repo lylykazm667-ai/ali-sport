@@ -988,3 +988,58 @@ private fun AccountsTabView() {
         )
     }
 }
+@Composable
+private fun rememberDrawableId(assetName: String): Int {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    return remember(assetName) {
+        context.resources.getIdentifier(assetName, "drawable", context.packageName)
+    }
+}
+
+@Composable
+private fun ChannelOrCategoryArtwork(
+    assetName: String,
+    contentDescription: String,
+    badgeText: String,
+    badgeBg: Color,
+    badgeTextColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val drawableId = rememberDrawableId(assetName)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(112.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(TileInnerBg),
+        contentAlignment = Alignment.Center
+    ) {
+        if (drawableId != 0) {
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = drawableId),
+                contentDescription = contentDescription,
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(badgeBg)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = badgeText,
+                    color = badgeTextColor,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = if (badgeText.length <= 2) 26.sp else 14.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 16.sp
+                )
+            }
+        }
+    }
+}
