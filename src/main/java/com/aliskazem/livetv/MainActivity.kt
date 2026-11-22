@@ -23,13 +23,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-data class TvChannelItem(
+enum class CategoryId {
+    BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
+}
+
+data class ChannelItem(
     val id: String,
-    val title: String,
+    val name: String,
+    val url: String,
+    val backupUrl: String? = null,
+    val logoAssetName: String,
     val badgeText: String,
     val badgeBg: Color,
-    val badgeTextColor: Color,
-    val streamUrl: String
+    val badgeTextColor: Color = Color.White
+)
+
+data class CategoryItem(
+    val id: CategoryId,
+    val name: String,
+    val logoAssetName: String,
+    val badgeText: String,
+    val badgeBg: Color,
+    val badgeTextColor: Color = Color.White,
+    val channels: List<ChannelItem>
 )
 
 data class MatchScheduleItem(
@@ -53,46 +69,336 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val channels = listOf(
-            TvChannelItem(
-                id = "alwan",
-                title = "Alwan Sport",
+        // شعار التطبيق المرجعي: /assets/images/1793667103213.jpg -> drawable: img_1793667103213
+        val appLogoAsset = "img_1793667103213"
+
+        val beinChannels = listOf(
+            ChannelItem(
+                id = "bein-1",
+                name = "bein sport 1",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153582",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7256",
+                logoAssetName = "bs1", // /assets/images/BS1.png
+                badgeText = "beIN 1",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-2",
+                name = "bein sport 2",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153583",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/55414",
+                logoAssetName = "bs2", // /assets/images/BS2.png
+                badgeText = "beIN 2",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-3",
+                name = "bein sport 3",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153584",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/64692",
+                logoAssetName = "bs3", // /assets/images/BS3.png
+                badgeText = "beIN 3",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-4",
+                name = "bein sport 4",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7754",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7262",
+                logoAssetName = "bs4", // /assets/images/BS4.png
+                badgeText = "beIN 4",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-5",
+                name = "bein sport 5",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153587",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7261",
+                logoAssetName = "bs5", // /assets/images/BS5.png
+                badgeText = "beIN 5",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-6",
+                name = "bein sport 6",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153588",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7260",
+                logoAssetName = "bs6", // /assets/images/BS6.png
+                badgeText = "beIN 6",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-7",
+                name = "bein sport 7",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153589",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7259",
+                logoAssetName = "bs7", // /assets/images/BS7.png
+                badgeText = "beIN 7",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-8",
+                name = "bein sport 8",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153590",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7258",
+                logoAssetName = "bs8", // /assets/images/BS8.png
+                badgeText = "beIN 8",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-9",
+                name = "bein sport 9",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153591",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7257",
+                logoAssetName = "bs9", // /assets/images/BS9.png
+                badgeText = "beIN 9",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-10",
+                name = "bein sport",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237786",
+                backupUrl = null,
+                logoAssetName = "bs10", // /assets/images/BS10.png
+                badgeText = "beIN HD",
+                badgeBg = Color(0xFF4C1D95)
+            ),
+            ChannelItem(
+                id = "bein-news",
+                name = "bein sport news",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102546",
+                backupUrl = null,
+                logoAssetName = "bs11", // /assets/images/BS11.png
+                badgeText = "beIN NEWS",
+                badgeBg = Color(0xFF4C1D95)
+            )
+        )
+
+        val alwanChannels = listOf(
+            ChannelItem(
+                id = "alwan-1",
+                name = "Alwan Sport 1",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237015",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237016",
+                logoAssetName = "alw1", // /assets/images/ALW1.png
+                badgeText = "ALWAN 1",
+                badgeBg = Color(0xFF0D2818),
+                badgeTextColor = Color(0xFF4ADE80)
+            ),
+            ChannelItem(
+                id = "alwan-2",
+                name = "Alwan Sport 2",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237018",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237019",
+                logoAssetName = "alw2", // /assets/images/ALW2.png
+                badgeText = "ALWAN 2",
+                badgeBg = Color(0xFF0D2818),
+                badgeTextColor = Color(0xFF4ADE80)
+            ),
+            ChannelItem(
+                id = "alwan-3",
+                name = "Alwan Sport 3",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237021",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237022",
+                logoAssetName = "alw3", // /assets/images/ALW3.png
+                badgeText = "ALWAN 3",
+                badgeBg = Color(0xFF0D2818),
+                badgeTextColor = Color(0xFF4ADE80)
+            ),
+            ChannelItem(
+                id = "alwan-4",
+                name = "Alwan Sport 4",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237024",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237025",
+                logoAssetName = "alw4", // /assets/images/ALW4.png
+                badgeText = "ALWAN 4",
+                badgeBg = Color(0xFF0D2818),
+                badgeTextColor = Color(0xFF4ADE80)
+            ),
+            ChannelItem(
+                id = "alwan-5",
+                name = "Alwan Sport 5",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237027",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237028",
+                logoAssetName = "alw5", // /assets/images/ALW5.png
+                badgeText = "ALWAN 5",
+                badgeBg = Color(0xFF0D2818),
+                badgeTextColor = Color(0xFF4ADE80)
+            ),
+            ChannelItem(
+                id = "alwan-6",
+                name = "Alwan Sport 6",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
+                backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
+                logoAssetName = "alw6", // /assets/images/ALW6.png
+                badgeText = "ALWAN 6",
+                badgeBg = Color(0xFF0D2818),
+                badgeTextColor = Color(0xFF4ADE80)
+            )
+        )
+
+        val alkassChannels = listOf(
+            ChannelItem(
+                id = "alkass-1",
+                name = "Alkass Sport 1",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102199",
+                logoAssetName = "alk1", // /assets/images/ALK1.png
+                badgeText = "الكأس 1",
+                badgeBg = Color(0xFF881337)
+            ),
+            ChannelItem(
+                id = "alkass-2",
+                name = "Alkass Sport 2",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102200",
+                logoAssetName = "alk2", // /assets/images/ALK2.png
+                badgeText = "الكأس 2",
+                badgeBg = Color(0xFF881337)
+            ),
+            ChannelItem(
+                id = "alkass-3",
+                name = "Alkass Sport 3",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102201",
+                logoAssetName = "alk3", // /assets/images/ALK3.png
+                badgeText = "الكأس 3",
+                badgeBg = Color(0xFF881337)
+            ),
+            ChannelItem(
+                id = "alkass-4",
+                name = "Alkass Sport 4",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102202",
+                logoAssetName = "alk4", // /assets/images/ALK4.png
+                badgeText = "الكأس 4",
+                badgeBg = Color(0xFF881337)
+            ),
+            ChannelItem(
+                id = "alkass-5",
+                name = "Alkass Sport 5",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102203",
+                logoAssetName = "alk5", // /assets/images/ALK5.png
+                badgeText = "الكأس 5",
+                badgeBg = Color(0xFF881337)
+            ),
+            ChannelItem(
+                id = "alkass-6",
+                name = "Alkass Sport 6",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/164857",
+                logoAssetName = "alk6", // /assets/images/ALK6.png
+                badgeText = "الكأس 6",
+                badgeBg = Color(0xFF881337)
+            ),
+            ChannelItem(
+                id = "alkass-7",
+                name = "Alkass Sport 7",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/164857",
+                logoAssetName = "alk7", // /assets/images/ALK7.png
+                badgeText = "الكأس 7",
+                badgeBg = Color(0xFF881337)
+            )
+        )
+
+        val abudhabiChannels = listOf(
+            ChannelItem(
+                id = "ad-1",
+                name = "Abu Dhabi Sports 1",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/3341",
+                logoAssetName = "ad1", // /assets/images/AD1.png
+                badgeText = "أبوظبي 1",
+                badgeBg = Color(0xFF0B1C14)
+            ),
+            ChannelItem(
+                id = "ad-2",
+                name = "Abu Dhabi Sports 2",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/3340",
+                logoAssetName = "ad2", // /assets/images/AD2.png
+                badgeText = "أبوظبي 2",
+                badgeBg = Color(0xFF0B1C14)
+            ),
+            ChannelItem(
+                id = "adb-1",
+                name = "Abu Dhabi Premium 1",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/177284",
+                logoAssetName = "adb1", // /assets/images/ADB1.png
+                badgeText = "AD Prem 1",
+                badgeBg = Color(0xFF0B1C14)
+            ),
+            ChannelItem(
+                id = "adb-2",
+                name = "Abu Dhabi Premium 2",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/177286",
+                logoAssetName = "adb2", // /assets/images/ADB2.png
+                badgeText = "AD Prem 2",
+                badgeBg = Color(0xFF0B1C14)
+            )
+        )
+
+        val thmanyahChannels = listOf(
+            ChannelItem(
+                id = "thmanyah-1",
+                name = "Thmanyah 1",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236891",
+                logoAssetName = "thmanyah", // /assets/images/Thmanyah.png
+                badgeText = "▲ 1",
+                badgeBg = Color(0xFF0A1710)
+            ),
+            ChannelItem(
+                id = "thmanyah-2",
+                name = "Thmanyah 2",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236892",
+                logoAssetName = "thmanyah", // /assets/images/Thmanyah.png
+                badgeText = "▲ 2",
+                badgeBg = Color(0xFF0A1710)
+            ),
+            ChannelItem(
+                id = "thmanyah-3",
+                name = "Thmanyah 3",
+                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236893",
+                logoAssetName = "thmanyah", // /assets/images/Thmanyah.png
+                badgeText = "▲ 3",
+                badgeBg = Color(0xFF0A1710)
+            )
+        )
+
+        val categories = listOf(
+            CategoryItem(
+                id = CategoryId.BEIN,
+                name = "bein sport",
+                logoAssetName = "bein", // /assets/images/bein.png
+                badgeText = "beIN\nSPORTS",
+                badgeBg = Color(0xFF4C1D95),
+                channels = beinChannels
+            ),
+            CategoryItem(
+                id = CategoryId.ALWAN,
+                name = "Alwan Sport",
+                logoAssetName = "alwan", // /assets/images/alwan.png
                 badgeText = "ALWAN\nSPORT",
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80),
-                streamUrl = "https://example.com/alwan.m3u8"
+                channels = alwanChannels
             ),
-            TvChannelItem(
-                id = "bein",
-                title = "bein sport",
-                badgeText = "beIN\nSPORTS",
-                badgeBg = Color(0xFF4C1D95),
-                badgeTextColor = Color.White,
-                streamUrl = "https://example.com/bein.m3u8"
-            ),
-            TvChannelItem(
-                id = "ad_sports",
-                title = "Abu Dhabi Sports",
-                badgeText = "أبوظبي الرياضية",
-                badgeTextColor = Color.White,
-                badgeBg = Color(0xFF0B1C14),
-                streamUrl = "https://example.com/adsports.m3u8"
-            ),
-            TvChannelItem(
-                id = "alkass",
-                title = "Alkass Sport",
+            CategoryItem(
+                id = CategoryId.ALKASS,
+                name = "Alkass Sport",
+                logoAssetName = "alkass", // /assets/images/alkass.png
                 badgeText = "┐",
                 badgeBg = Color(0xFF881337),
-                badgeTextColor = Color.White,
-                streamUrl = "https://example.com/alkass.m3u8"
+                channels = alkassChannels
             ),
-            TvChannelItem(
-                id = "thmanyah",
-                title = "Thmanyah Sports",
+            CategoryItem(
+                id = CategoryId.ABUDHABI,
+                name = "Abu Dhabi Sports",
+                logoAssetName = "abudhabi", // /assets/images/abudhabi.png
+                badgeText = "أبوظبي الرياضية",
+                badgeBg = Color(0xFF0B1C14),
+                channels = abudhabiChannels
+            ),
+            CategoryItem(
+                id = CategoryId.THMANYAH,
+                name = "Thmanyah Sports",
+                logoAssetName = "thmanyah", // /assets/images/Thmanyah.png
                 badgeText = "▲",
                 badgeBg = Color(0xFF0A1710),
-                badgeTextColor = Color.White,
-                streamUrl = "https://example.com/thmanyah.m3u8"
+                channels = thmanyahChannels
             )
         )
 
@@ -100,7 +406,7 @@ class MainActivity : ComponentActivity() {
             MatchScheduleItem(
                 id = "m1",
                 teams = "المنتخب العراقي × خصم دولي",
-                tournament = "مباراة ودية / دولية",
+                tournament = "مباراة دولية",
                 timeText = "21:00",
                 isLive = true
             ),
@@ -127,7 +433,8 @@ class MainActivity : ComponentActivity() {
                 )
             ) {
                 AliKazemSportApp(
-                    channels = channels,
+                    appLogoAsset = appLogoAsset,
+                    categories = categories,
                     matches = matches
                 )
             }
@@ -137,13 +444,16 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AliKazemSportApp(
-    channels: List<TvChannelItem>,
+    appLogoAsset: String,
+    categories: List<CategoryItem>,
     matches: List<MatchScheduleItem>
 ) {
     // 0: حساباتي | 1: جدول المباريات | 2: قنوات البث
     var selectedTab by remember { mutableIntStateOf(2) }
     var isArabic by remember { mutableStateOf(true) }
-    var selectedChannel by remember { mutableStateOf<TvChannelItem?>(null) }
+    var activeCategory by remember { mutableStateOf<CategoryItem?>(null) }
+    var selectedChannel by remember { mutableStateOf<ChannelItem?>(null) }
+    var useBackupStream by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -186,6 +496,7 @@ fun AliKazemSportApp(
                     fontSize = 20.sp
                 )
 
+                // عند رفع صورة الشعار إلى drawable باسم img_1793667103213 يمكنك عرضها هنا
                 Box(
                     modifier = Modifier
                         .size(54.dp)
@@ -248,11 +559,40 @@ fun AliKazemSportApp(
             Spacer(modifier = Modifier.height(14.dp))
 
             when (selectedTab) {
-                2 -> ChannelsGridView(
-                    channels = channels,
-                    selectedChannel = selectedChannel,
-                    onSelectChannel = { selectedChannel = it }
-                )
+                2 -> {
+                    val currentCategory = activeCategory
+                    if (currentCategory == null) {
+                        CategoriesGridView(
+                            categories = categories,
+                            selectedChannel = selectedChannel,
+                            useBackupStream = useBackupStream,
+                            onToggleBackup = { useBackupStream = !useBackupStream },
+                            onClearChannel = {
+                                selectedChannel = null
+                                useBackupStream = false
+                            },
+                            onSelectCategory = { cat ->
+                                activeCategory = cat
+                            }
+                        )
+                    } else {
+                        CategoryChannelsListView(
+                            category = currentCategory,
+                            selectedChannel = selectedChannel,
+                            useBackupStream = useBackupStream,
+                            onToggleBackup = { useBackupStream = !useBackupStream },
+                            onBackToCategories = { activeCategory = null },
+                            onSelectChannel = { ch ->
+                                selectedChannel = ch
+                                useBackupStream = false
+                            },
+                            onClearChannel = {
+                                selectedChannel = null
+                                useBackupStream = false
+                            }
+                        )
+                    }
+                }
 
                 1 -> MatchesScheduleView(matches = matches)
 
@@ -297,12 +637,86 @@ private fun TopNavTab(
 }
 
 @Composable
-private fun ChannelsGridView(
-    channels: List<TvChannelItem>,
-    selectedChannel: TvChannelItem?,
-    onSelectChannel: (TvChannelItem) -> Unit
+private fun SelectedStreamBanner(
+    channel: ChannelItem,
+    useBackupStream: Boolean,
+    onToggleBackup: () -> Unit,
+    onClose: () -> Unit
 ) {
-    val rows = channels.chunked(2)
+    val activeUrl = if (useBackupStream && !channel.backupUrl.isNullOrBlank()) {
+        channel.backupUrl
+    } else {
+        channel.url
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(PanelBg)
+            .border(1.dp, ActiveGreen, RoundedCornerShape(16.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "القناة المحددة: ${channel.name}",
+                color = TextWhite,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "إغلاق",
+                color = ActiveGreen,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(ActiveGreen.copy(alpha = 0.15f))
+                    .clickable(onClick = onClose)
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
+
+        Text(
+            text = activeUrl,
+            color = ActiveGreen,
+            fontSize = 11.sp,
+            maxLines = 1
+        )
+
+        if (!channel.backupUrl.isNullOrBlank()) {
+            Text(
+                text = if (useBackupStream) "السيرفر الاحتياطي مفعّل (اضغط للأساسي)" else "تبديل إلى السيرفر الاحتياطي",
+                color = TextWhite,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(TileInnerBg)
+                    .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                    .clickable(onClick = onToggleBackup)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoriesGridView(
+    categories: List<CategoryItem>,
+    selectedChannel: ChannelItem?,
+    useBackupStream: Boolean,
+    onToggleBackup: () -> Unit,
+    onClearChannel: () -> Unit,
+    onSelectCategory: (CategoryItem) -> Unit
+) {
+    val rows = categories.chunked(2)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -310,44 +724,13 @@ private fun ChannelsGridView(
         contentPadding = PaddingValues(bottom = 20.dp)
     ) {
         if (selectedChannel != null) {
-            item(key = "active_banner") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(PanelBg)
-                        .border(1.dp, ActiveGreen, RoundedCornerShape(16.dp))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "القناة المحددة: ${selectedChannel.title}",
-                            color = TextWhite,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = selectedChannel.streamUrl,
-                            color = ActiveGreen,
-                            fontSize = 11.sp,
-                            maxLines = 1
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "إغلاق",
-                        color = ActiveGreen,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(ActiveGreen.copy(alpha = 0.15f))
-                            .clickable { onSelectChannel(selectedChannel) }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
-                }
+            item(key = "selected_banner_cat") {
+                SelectedStreamBanner(
+                    channel = selectedChannel,
+                    useBackupStream = useBackupStream,
+                    onToggleBackup = onToggleBackup,
+                    onClose = onClearChannel
+                )
             }
         }
 
@@ -356,12 +739,10 @@ private fun ChannelsGridView(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                rowItems.forEach { channel ->
-                    val isSelected = selectedChannel?.id == channel.id
-                    ChannelGridCard(
-                        channel = channel,
-                        isSelected = isSelected,
-                        onClick = { onSelectChannel(channel) },
+                rowItems.forEach { category ->
+                    CategoryGridCard(
+                        category = category,
+                        onClick = { onSelectCategory(category) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -374,9 +755,8 @@ private fun ChannelsGridView(
 }
 
 @Composable
-private fun ChannelGridCard(
-    channel: TvChannelItem,
-    isSelected: Boolean,
+private fun CategoryGridCard(
+    category: CategoryItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -384,11 +764,7 @@ private fun ChannelGridCard(
         modifier = modifier
             .clip(RoundedCornerShape(22.dp))
             .background(TileBg)
-            .border(
-                width = if (isSelected) 1.5.dp else 1.dp,
-                color = if (isSelected) ActiveGreen else BorderGreen,
-                shape = RoundedCornerShape(22.dp)
-            )
+            .border(1.dp, BorderGreen, RoundedCornerShape(22.dp))
             .clickable(onClick = onClick)
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -404,15 +780,15 @@ private fun ChannelGridCard(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(channel.badgeBg)
+                    .background(category.badgeBg)
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = channel.badgeText,
-                    color = channel.badgeTextColor,
+                    text = category.badgeText,
+                    color = category.badgeTextColor,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = if (channel.badgeText.length <= 2) 26.sp else 14.sp,
+                    fontSize = if (category.badgeText.length <= 2) 26.sp else 14.sp,
                     textAlign = TextAlign.Center,
                     lineHeight = 16.sp
                 )
@@ -422,12 +798,115 @@ private fun ChannelGridCard(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = channel.title,
+            text = category.name,
             color = TextWhite,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1
         )
+    }
+}
+
+@Composable
+private fun CategoryChannelsListView(
+    category: CategoryItem,
+    selectedChannel: ChannelItem?,
+    useBackupStream: Boolean,
+    onToggleBackup: () -> Unit,
+    onBackToCategories: () -> Unit,
+    onSelectChannel: (ChannelItem) -> Unit,
+    onClearChannel: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(bottom = 20.dp)
+    ) {
+        item(key = "cat_header") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "← رجوع للتصنيفات",
+                    color = ActiveGreen,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(PanelBg)
+                        .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
+                        .clickable(onClick = onBackToCategories)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+
+                Text(
+                    text = "${category.name} (${category.channels.size})",
+                    color = TextWhite,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+        }
+
+        if (selectedChannel != null) {
+            item(key = "selected_banner_list") {
+                SelectedStreamBanner(
+                    channel = selectedChannel,
+                    useBackupStream = useBackupStream,
+                    onToggleBackup = onToggleBackup,
+                    onClose = onClearChannel
+                )
+            }
+        }
+
+        items(category.channels, key = { it.id }) { channel ->
+            val isSelected = selectedChannel?.id == channel.id
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isSelected) Color(0xFF0E2419) else PanelBg)
+                    .border(
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = if (isSelected) ActiveGreen else BorderGreen,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .clickable { onSelectChannel(channel) }
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = channel.name,
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "الشعار: ${channel.logoAssetName} • ${if (!channel.backupUrl.isNullOrBlank()) "يدعم رابط احتياطي" else "رابط أساسي"}",
+                        color = TextMuted,
+                        fontSize = 11.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Text(
+                    text = if (isSelected) "محدد" else "اختيار",
+                    color = if (isSelected) Color.White else ActiveGreen,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSelected) ActiveGreen else ActiveGreen.copy(alpha = 0.14f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
     }
 }
 
