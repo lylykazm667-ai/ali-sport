@@ -1,8 +1,11 @@
 package com.aliskazem.livetv
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,37 +14,26 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
-import android.app.Activity
-import android.content.pm.ActivityInfo
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.FullscreenExit
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
@@ -98,7 +90,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport 1",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153582",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7256",
-                logoAssetName = "bs1", // /assets/images/BS1.png
+                logoAssetName = "bs1",
                 badgeText = "beIN 1",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -107,7 +99,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport 2",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153583",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/55414",
-                logoAssetName = "bs2", // /assets/images/BS2.png
+                logoAssetName = "bs2",
                 badgeText = "beIN 2",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -116,7 +108,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport 3",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153584",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/64692",
-                logoAssetName = "bs3", // /assets/images/BS3.png
+                logoAssetName = "bs3",
                 badgeText = "beIN 3",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -125,7 +117,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport 4",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7754",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7262",
-                logoAssetName = "bs4", // /assets/images/BS4.png
+                logoAssetName = "bs4",
                 badgeText = "beIN 4",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -134,7 +126,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport 5",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153587",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7261",
-                logoAssetName = "bs5", // /assets/images/BS5.png
+                logoAssetName = "bs5",
                 badgeText = "beIN 5",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -143,7 +135,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport 6",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153588",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7260",
-                logoAssetName = "bs6", // /assets/images/BS6.png
+                logoAssetName = "bs6",
                 badgeText = "beIN 6",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -152,7 +144,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport 7",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153589",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7259",
-                logoAssetName = "bs7", // /assets/images/BS7.png
+                logoAssetName = "bs7",
                 badgeText = "beIN 7",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -161,7 +153,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport 8",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153590",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7258",
-                logoAssetName = "bs8", // /assets/images/BS8.png
+                logoAssetName = "bs8",
                 badgeText = "beIN 8",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -170,7 +162,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport 9",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153591",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7257",
-                logoAssetName = "bs9", // /assets/images/BS9.png
+                logoAssetName = "bs9",
                 badgeText = "beIN 9",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -179,7 +171,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237786",
                 backupUrl = null,
-                logoAssetName = "bs10", // /assets/images/BS10.png
+                logoAssetName = "bs10",
                 badgeText = "beIN HD",
                 badgeBg = Color(0xFF4C1D95)
             ),
@@ -188,7 +180,7 @@ class MainActivity : ComponentActivity() {
                 name = "bein sport news",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102546",
                 backupUrl = null,
-                logoAssetName = "bs11", // /assets/images/BS11.png
+                logoAssetName = "bs11",
                 badgeText = "beIN NEWS",
                 badgeBg = Color(0xFF4C1D95)
             )
@@ -200,7 +192,7 @@ class MainActivity : ComponentActivity() {
                 name = "Alwan Sport 1",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237015",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237016",
-                logoAssetName = "alw1", // /assets/images/ALW1.png
+                logoAssetName = "alw1",
                 badgeText = "ALWAN 1",
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80)
@@ -210,7 +202,7 @@ class MainActivity : ComponentActivity() {
                 name = "Alwan Sport 2",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237018",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237019",
-                logoAssetName = "alw2", // /assets/images/ALW2.png
+                logoAssetName = "alw2",
                 badgeText = "ALWAN 2",
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80)
@@ -220,7 +212,7 @@ class MainActivity : ComponentActivity() {
                 name = "Alwan Sport 3",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237021",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237022",
-                logoAssetName = "alw3", // /assets/images/ALW3.png
+                logoAssetName = "alw3",
                 badgeText = "ALWAN 3",
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80)
@@ -230,7 +222,7 @@ class MainActivity : ComponentActivity() {
                 name = "Alwan Sport 4",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237024",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237025",
-                logoAssetName = "alw4", // /assets/images/ALW4.png
+                logoAssetName = "alw4",
                 badgeText = "ALWAN 4",
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80)
@@ -240,7 +232,7 @@ class MainActivity : ComponentActivity() {
                 name = "Alwan Sport 5",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237027",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237028",
-                logoAssetName = "alw5", // /assets/images/ALW5.png
+                logoAssetName = "alw5",
                 badgeText = "ALWAN 5",
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80)
@@ -250,7 +242,7 @@ class MainActivity : ComponentActivity() {
                 name = "Alwan Sport 6",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
                 backupUrl = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
-                logoAssetName = "alw6", // /assets/images/ALW6.png
+                logoAssetName = "alw6",
                 badgeText = "ALWAN 6",
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80)
@@ -262,7 +254,7 @@ class MainActivity : ComponentActivity() {
                 id = "alkass-1",
                 name = "Alkass Sport 1",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102199",
-                logoAssetName = "alk1", // /assets/images/ALK1.png
+                logoAssetName = "alk1",
                 badgeText = "الكأس 1",
                 badgeBg = Color(0xFF881337)
             ),
@@ -270,7 +262,7 @@ class MainActivity : ComponentActivity() {
                 id = "alkass-2",
                 name = "Alkass Sport 2",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102200",
-                logoAssetName = "alk2", // /assets/images/ALK2.png
+                logoAssetName = "alk2",
                 badgeText = "الكأس 2",
                 badgeBg = Color(0xFF881337)
             ),
@@ -278,7 +270,7 @@ class MainActivity : ComponentActivity() {
                 id = "alkass-3",
                 name = "Alkass Sport 3",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102201",
-                logoAssetName = "alk3", // /assets/images/ALK3.png
+                logoAssetName = "alk3",
                 badgeText = "الكأس 3",
                 badgeBg = Color(0xFF881337)
             ),
@@ -286,7 +278,7 @@ class MainActivity : ComponentActivity() {
                 id = "alkass-4",
                 name = "Alkass Sport 4",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102202",
-                logoAssetName = "alk4", // /assets/images/ALK4.png
+                logoAssetName = "alk4",
                 badgeText = "الكأس 4",
                 badgeBg = Color(0xFF881337)
             ),
@@ -294,7 +286,7 @@ class MainActivity : ComponentActivity() {
                 id = "alkass-5",
                 name = "Alkass Sport 5",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102203",
-                logoAssetName = "alk5", // /assets/images/ALK5.png
+                logoAssetName = "alk5",
                 badgeText = "الكأس 5",
                 badgeBg = Color(0xFF881337)
             ),
@@ -302,7 +294,7 @@ class MainActivity : ComponentActivity() {
                 id = "alkass-6",
                 name = "Alkass Sport 6",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/164857",
-                logoAssetName = "alk6", // /assets/images/ALK6.png
+                logoAssetName = "alk6",
                 badgeText = "الكأس 6",
                 badgeBg = Color(0xFF881337)
             ),
@@ -310,7 +302,7 @@ class MainActivity : ComponentActivity() {
                 id = "alkass-7",
                 name = "Alkass Sport 7",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/164857",
-                logoAssetName = "alk7", // /assets/images/ALK7.png
+                logoAssetName = "alk7",
                 badgeText = "الكأس 7",
                 badgeBg = Color(0xFF881337)
             )
@@ -321,7 +313,7 @@ class MainActivity : ComponentActivity() {
                 id = "ad-1",
                 name = "Abu Dhabi Sports 1",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/3341",
-                logoAssetName = "ad1", // /assets/images/AD1.png
+                logoAssetName = "ad1",
                 badgeText = "أبوظبي 1",
                 badgeBg = Color(0xFF0B1C14)
             ),
@@ -329,7 +321,7 @@ class MainActivity : ComponentActivity() {
                 id = "ad-2",
                 name = "Abu Dhabi Sports 2",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/3340",
-                logoAssetName = "ad2", // /assets/images/AD2.png
+                logoAssetName = "ad2",
                 badgeText = "أبوظبي 2",
                 badgeBg = Color(0xFF0B1C14)
             ),
@@ -337,7 +329,7 @@ class MainActivity : ComponentActivity() {
                 id = "adb-1",
                 name = "Abu Dhabi Premium 1",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/177284",
-                logoAssetName = "adb1", // /assets/images/ADB1.png
+                logoAssetName = "adb1",
                 badgeText = "AD Prem 1",
                 badgeBg = Color(0xFF0B1C14)
             ),
@@ -345,7 +337,7 @@ class MainActivity : ComponentActivity() {
                 id = "adb-2",
                 name = "Abu Dhabi Premium 2",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/177286",
-                logoAssetName = "adb2", // /assets/images/ADB2.png
+                logoAssetName = "adb2",
                 badgeText = "AD Prem 2",
                 badgeBg = Color(0xFF0B1C14)
             )
@@ -356,7 +348,7 @@ class MainActivity : ComponentActivity() {
                 id = "thmanyah-1",
                 name = "Thmanyah 1",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236891",
-                logoAssetName = "thmanyah", // /assets/images/Thmanyah.png
+                logoAssetName = "thmanyah",
                 badgeText = "▲ 1",
                 badgeBg = Color(0xFF0A1710)
             ),
@@ -364,7 +356,7 @@ class MainActivity : ComponentActivity() {
                 id = "thmanyah-2",
                 name = "Thmanyah 2",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236892",
-                logoAssetName = "thmanyah", // /assets/images/Thmanyah.png
+                logoAssetName = "thmanyah",
                 badgeText = "▲ 2",
                 badgeBg = Color(0xFF0A1710)
             ),
@@ -372,7 +364,7 @@ class MainActivity : ComponentActivity() {
                 id = "thmanyah-3",
                 name = "Thmanyah 3",
                 url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236893",
-                logoAssetName = "thmanyah", // /assets/images/Thmanyah.png
+                logoAssetName = "thmanyah",
                 badgeText = "▲ 3",
                 badgeBg = Color(0xFF0A1710)
             )
@@ -382,7 +374,7 @@ class MainActivity : ComponentActivity() {
             CategoryItem(
                 id = CategoryId.BEIN,
                 name = "bein sport",
-                logoAssetName = "bein", // /assets/images/bein.png
+                logoAssetName = "bein",
                 badgeText = "beIN\nSPORTS",
                 badgeBg = Color(0xFF4C1D95),
                 channels = beinChannels
@@ -390,7 +382,7 @@ class MainActivity : ComponentActivity() {
             CategoryItem(
                 id = CategoryId.ALWAN,
                 name = "Alwan Sport",
-                logoAssetName = "alwan", // /assets/images/alwan.png
+                logoAssetName = "alwan",
                 badgeText = "ALWAN\nSPORT",
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80),
@@ -399,7 +391,7 @@ class MainActivity : ComponentActivity() {
             CategoryItem(
                 id = CategoryId.ALKASS,
                 name = "Alkass Sport",
-                logoAssetName = "alkass", // /assets/images/alkass.png
+                logoAssetName = "alkass",
                 badgeText = "┐",
                 badgeBg = Color(0xFF881337),
                 channels = alkassChannels
@@ -407,7 +399,7 @@ class MainActivity : ComponentActivity() {
             CategoryItem(
                 id = CategoryId.ABUDHABI,
                 name = "Abu Dhabi Sports",
-                logoAssetName = "abudhabi", // /assets/images/abudhabi.png
+                logoAssetName = "abudhabi",
                 badgeText = "أبوظبي الرياضية",
                 badgeBg = Color(0xFF0B1C14),
                 channels = abudhabiChannels
@@ -415,7 +407,7 @@ class MainActivity : ComponentActivity() {
             CategoryItem(
                 id = CategoryId.THMANYAH,
                 name = "Thmanyah Sports",
-                logoAssetName = "thmanyah", // /assets/images/Thmanyah.png
+                logoAssetName = "thmanyah",
                 badgeText = "▲",
                 badgeBg = Color(0xFF0A1710),
                 channels = thmanyahChannels
@@ -481,167 +473,165 @@ fun AliKazemSportApp(
             .background(ScreenBg)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // البطاقة العلوية: زر اللغة + العنوان + الشعار الدائري
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(PanelBg)
-                    .border(1.dp, BorderGreen, RoundedCornerShape(22.dp))
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Box(
+        if (selectedChannel != null) {
+            FullScreenStreamPlayer(
+                channel = selectedChannel!!,
+                useBackupStream = useBackupStream,
+                onToggleBackup = { useBackupStream = !useBackupStream },
+                onBackToChannels = {
+                    selectedChannel = null
+                    useBackupStream = false
+                }
+            )
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // البطاقة العلوية: زر اللغة + العنوان + الشعار الدائري
+                Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(ActiveGreen)
-                        .clickable { isArabic = !isArabic }
-                        .padding(horizontal = 14.dp, vertical = 7.dp),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(PanelBg)
+                        .border(1.dp, BorderGreen, RoundedCornerShape(22.dp))
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(ActiveGreen)
+                            .clickable { isArabic = !isArabic }
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isArabic) "عربي" else "EN",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+
                     Text(
-                        text = if (isArabic) "عربي" else "EN",
-                        color = Color.White,
+                        text = if (isArabic) "علي كاظم سبورت" else "Ali Kazem Sport",
+                        color = TextWhite,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        fontSize = 20.sp
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    colors = listOf(Color(0xFF1B5E20), Color(0xFF071A0E))
+                                )
+                            )
+                            .border(2.dp, ActiveGreen, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val logoDrawableId = rememberDrawableId(appLogoAsset)
+                        if (logoDrawableId != 0) {
+                            Image(
+                                painter = painterResource(id = logoDrawableId),
+                                contentDescription = "Ali Kazem SPORTS",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Text(
+                                text = "Ali Kazem\nSPORTS",
+                                color = Color(0xFFFEF5E9),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 9.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // شريط التبويب الثلاثي
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(PanelBg)
+                        .border(1.dp, BorderGreen, RoundedCornerShape(20.dp))
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TopNavTab(
+                        label = if (isArabic) "حساباتي" else "Accounts",
+                        iconGlyph = "⑂",
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        modifier = Modifier.weight(1f)
+                    )
+                    TopNavTab(
+                        label = if (isArabic) "جدول المباريات" else "Matches",
+                        iconGlyph = "▦",
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        modifier = Modifier.weight(1f)
+                    )
+                    TopNavTab(
+                        label = if (isArabic) "قنوات البث" else "Live TV",
+                        iconGlyph = "▣",
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
-                Text(
-                    text = if (isArabic) "علي كاظم سبورت" else "Ali Kazem Sport",
-                    color = TextWhite,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                )
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // عند رفع صورة الشعار إلى drawable باسم img_1793667103213 يمكنك عرضها هنا
-                Box(
-                    modifier = Modifier
-                        .size(54.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(Color(0xFF1B5E20), Color(0xFF071A0E))
+                when (selectedTab) {
+                    2 -> {
+                        val currentCategory = activeCategory
+                        if (currentCategory == null) {
+                            CategoriesGridView(
+                                categories = categories,
+                                selectedChannel = selectedChannel,
+                                useBackupStream = useBackupStream,
+                                onToggleBackup = { useBackupStream = !useBackupStream },
+                                onClearChannel = {
+                                    selectedChannel = null
+                                    useBackupStream = false
+                                },
+                                onSelectCategory = { cat ->
+                                    activeCategory = cat
+                                }
                             )
-                        )
-                        .border(2.dp, ActiveGreen, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                        val logoDrawableId = rememberDrawableId(appLogoAsset)
-    if (logoDrawableId != 0) {
-        androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(id = logoDrawableId),
-            contentDescription = "Ali Kazem SPORTS",
-            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-    } else {
-        Text(
-            text = "Ali Kazem\nSPORTS",
-            color = Color(0xFFFEF5E9),
-            fontSize = 8.sp,
-            fontWeight = FontWeight.ExtraBold,
-            textAlign = TextAlign.Center,
-            lineHeight = 9.sp
-        )
-    }
-
+                        } else {
+                            CategoryChannelsListView(
+                                category = currentCategory,
+                                selectedChannel = selectedChannel,
+                                useBackupStream = useBackupStream,
+                                onToggleBackup = { useBackupStream = !useBackupStream },
+                                onBackToCategories = { activeCategory = null },
+                                onSelectChannel = { ch ->
+                                    selectedChannel = ch
+                                    useBackupStream = false
+                                },
+                                onClearChannel = {
+                                    selectedChannel = null
+                                    useBackupStream = false
+                                }
+                            )
+                        }
+                    }
+                    1 -> MatchesScheduleView(matches = matches)
+                    else -> AccountsTabView()
                 }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // شريط التبويب الثلاثي
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(PanelBg)
-                    .border(1.dp, BorderGreen, RoundedCornerShape(20.dp))
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TopNavTab(
-                    label = if (isArabic) "حساباتي" else "Accounts",
-                    iconGlyph = "⑂",
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    modifier = Modifier.weight(1f)
-                )
-                TopNavTab(
-                    label = if (isArabic) "جدول المباريات" else "Matches",
-                    iconGlyph = "▦",
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    modifier = Modifier.weight(1f)
-                )
-                TopNavTab(
-                    label = if (isArabic) "قنوات البث" else "Live TV",
-                    iconGlyph = "▣",
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            if (selectedChannel != null) {
-    FullScreenStreamPlayer(
-        channel = selectedChannel!!,
-        useBackupStream = useBackupStream,
-        onToggleBackup = { useBackupStream = !useBackupStream },
-        onBackToChannels = {
-            selectedChannel = null
-            useBackupStream = false
         }
-    )
-   }
-} else {
-    when (selectedTab) {
-        2 -> {
-            val currentCategory = activeCategory
-            if (currentCategory == null) {
-                CategoriesGridView(
-                    categories = categories,
-                    selectedChannel = selectedChannel,
-                    useBackupStream = useBackupStream,
-                    onToggleBackup = { useBackupStream = !useBackupStream },
-                    onClearChannel = {
-                        selectedChannel = null
-                        useBackupStream = false
-                    },
-                    onSelectCategory = { cat ->
-                        activeCategory = cat
-                    }
-                )
-            } else {
-                CategoryChannelsListView(
-                    category = currentCategory,
-                    selectedChannel = selectedChannel,
-                    useBackupStream = useBackupStream,
-                    onToggleBackup = { useBackupStream = !useBackupStream },
-                    onBackToCategories = { activeCategory = null },
-                    onSelectChannel = { ch ->
-                        selectedChannel = ch
-                        useBackupStream = false
-                    },
-                    onClearChannel = {
-                        selectedChannel = null
-                        useBackupStream = false
-                    }
-                )
-            }
-        }
-        1 -> MatchesScheduleView(matches = matches)
-        else -> AccountsTabView()
     }
-  }
 }
-
 
 @Composable
 private fun TopNavTab(
@@ -730,10 +720,11 @@ private fun SelectedStreamBanner(
             fontSize = 11.sp,
             maxLines = 1
         )
-if (activeUrl.isNotBlank()) {
-    Spacer(modifier = Modifier.height(8.dp))
-    StreamVideoPlayer(streamUrl = activeUrl)
-}
+
+        if (activeUrl.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            StreamVideoPlayer(streamUrl = activeUrl)
+        }
 
         if (!channel.backupUrl.isNullOrBlank()) {
             Text(
@@ -750,7 +741,9 @@ if (activeUrl.isNotBlank()) {
             )
         }
     }
-    @Composable
+}
+
+@Composable
 private fun FullScreenStreamPlayer(
     channel: ChannelItem,
     useBackupStream: Boolean,
@@ -760,7 +753,7 @@ private fun FullScreenStreamPlayer(
     val context = LocalContext.current
     val activity = context as? Activity
     val activeUrl = if (useBackupStream && !channel.backupUrl.isNullOrBlank()) {
-        channel.backupUrl!!
+        channel.backupUrl
     } else {
         channel.url
     }
@@ -858,22 +851,19 @@ private fun FullScreenStreamPlayer(
                     )
                 }
 
-                                        IconButton(onClick = { setLandscapeMode(!isLandscape) }) {
-                Text(
-                    text = if (isLandscape) "↙" else "⛶",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-                            
+                IconButton(onClick = { setLandscapeMode(!isLandscape) }) {
+                    Text(
+                        text = if (isLandscape) "↙" else "⛶",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
 }
 
-}
 @Composable
 private fun StreamVideoPlayer(
     streamUrl: String,
@@ -927,7 +917,6 @@ private fun CategoriesGridView(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(bottom = 20.dp)
     ) {
-
         items(rows) { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -963,22 +952,22 @@ private fun CategoryGridCard(
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-            Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(112.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(TileInnerBg),
-        contentAlignment = Alignment.Center
-    ) {
-        ChannelOrCategoryArtwork(
-            assetName = category.logoAssetName,
-            contentDescription = category.name,
-            badgeText = category.badgeText,
-            badgeBg = category.badgeBg,
-            badgeTextColor = category.badgeTextColor
-        )
-    }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(112.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(TileInnerBg),
+            contentAlignment = Alignment.Center
+        ) {
+            ChannelOrCategoryArtwork(
+                assetName = category.logoAssetName,
+                contentDescription = category.name,
+                badgeText = category.badgeText,
+                badgeBg = category.badgeBg,
+                badgeTextColor = category.badgeTextColor
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -1052,15 +1041,15 @@ private fun CategoryChannelsListView(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                        ChannelOrCategoryArtwork(
-            assetName = channel.logoAssetName,
-            contentDescription = channel.name,
-            badgeText = channel.name.take(2).uppercase(),
-            badgeBg = TileInnerBg,
-            badgeTextColor = ActiveGreen,
-            modifier = Modifier.width(74.dp)
-        )
-        Spacer(modifier = Modifier.width(10.dp))
+                ChannelOrCategoryArtwork(
+                    assetName = channel.logoAssetName,
+                    contentDescription = channel.name,
+                    badgeText = channel.name.take(2).uppercase(),
+                    badgeBg = TileInnerBg,
+                    badgeTextColor = ActiveGreen,
+                    modifier = Modifier.width(74.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -1172,9 +1161,10 @@ private fun AccountsTabView() {
         )
     }
 }
+
 @Composable
 private fun rememberDrawableId(assetName: String): Int {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     return remember(assetName) {
         context.resources.getIdentifier(assetName, "drawable", context.packageName)
     }
@@ -1199,10 +1189,10 @@ private fun ChannelOrCategoryArtwork(
         contentAlignment = Alignment.Center
     ) {
         if (drawableId != 0) {
-            androidx.compose.foundation.Image(
-                painter = androidx.compose.ui.res.painterResource(id = drawableId),
+            Image(
+                painter = painterResource(id = drawableId),
                 contentDescription = contentDescription,
-                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(8.dp)
@@ -1227,4 +1217,3 @@ private fun ChannelOrCategoryArtwork(
         }
     }
 }
-    }
