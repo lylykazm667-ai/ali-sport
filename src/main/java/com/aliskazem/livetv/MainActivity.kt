@@ -780,31 +780,22 @@ private fun CategoryGridCard(
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(112.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(TileInnerBg),
-            contentAlignment = Alignment.Center
-        ) {
             Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(category.badgeBg)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = category.badgeText,
-                    color = category.badgeTextColor,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = if (category.badgeText.length <= 2) 26.sp else 14.sp,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 16.sp
-                )
-            }
-        }
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(112.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(TileInnerBg),
+        contentAlignment = Alignment.Center
+    ) {
+        ChannelOrCategoryArtwork(
+            assetName = category.logoAssetName,
+            contentDescription = category.name,
+            badgeText = category.badgeText,
+            badgeBg = category.badgeBg,
+            badgeTextColor = category.badgeTextColor
+        )
+    }
 
         Spacer(modifier = Modifier.height(12.dp))
 
