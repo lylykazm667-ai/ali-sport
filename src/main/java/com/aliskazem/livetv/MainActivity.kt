@@ -773,61 +773,75 @@ private fun FullScreenStreamPlayer(
     }
 
     DisposableEffect(activity) {
-        val window = activity?.window
-        val previousOrientation = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        val insetsController = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+    val window = activity?.window
+    val previousOrientation =
+        activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    val insetsController = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
 
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        insetsController?.systemBarsBehavior =WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-    window?.attributes?.layoutInDisplayCutoutMode =
-        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+    if (window != null) {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+    }
+
+    insetsController?.systemBarsBehavior =
+        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        window?.attributes?.layoutInDisplayCutoutMode =
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        window?.attributes = window?.attributes
+    }
+
+    insetsController?.hide(
+        WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+    )
+
+    onDispose {
+        insetsController?.show(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+        )
+        window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        activity?.requestedOrientation = previousOrientation
+    }
 }
-insetsController?.hide(
-    WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
-)
 
-        onDispose {
-            insetsController?.show(WindowInsetsCompat.Type.systemBars())
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            activity?.requestedOrientation = previousOrientation
-        }
+val exoPlayer = remember(activeUrl) {
+    ExoPlayer.Builder(context).build().apply {
+        setMediaItem(MediaItem.fromUri(activeUrl))
+        prepare()
+        playWhenReady = true
     }
+}
 
-    val exoPlayer = remember(activeUrl) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(activeUrl))
-            prepare()
-            playWhenReady = true
-        }
+DisposableEffect(exoPlayer) {
+    onDispose {
+        exoPlayer.release()
     }
+}
 
-    DisposableEffect(exoPlayer) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
+Box(
+    modifier = Modifier
+        .fillMaxSize()
+        .background(Color.Black)
+        .clickable { showControls = !showControls }
+) {
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = false
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+            }
+        },
+        update = { playerView ->
+            playerView.player = exoPlayer
+            playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+        },
+        modifier = Modifier.fillMaxSize()
+    )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .clickable { showControls = !showControls }
-    ) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    player = exoPlayer
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-                }
-            },
-            update = { playerView ->
-                playerView.player = exoPlayer
-                playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-            },
-            modifier = Modifier.fillMaxSize()
         )
 
         if (showControls) {
