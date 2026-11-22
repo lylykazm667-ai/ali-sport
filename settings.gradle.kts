@@ -14,5 +14,3 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "LiveTV"
-include(":app")
-project(":app").projectDir = file(".")
