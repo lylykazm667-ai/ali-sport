@@ -857,13 +857,14 @@ private fun FullScreenStreamPlayer(
                     )
                 }
 
-                IconButton(onClick = { setLandscapeMode(!isLandscape) }) {
-                    Icon(
-                        imageVector = if (isLandscape) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                        contentDescription = "ملء الشاشة بالعرض",
-                        tint = Color.White
-                    )
-                }
+                            IconButton(onClick = { setLandscapeMode(!isLandscape) }) {
+                Icon(
+                    imageVector = if (isLandscape) Icons.Default.ArrowBack else Icons.Default.PlayArrow,
+                    contentDescription = "ملء الشاشة بالعرض",
+                    tint = Color.White
+                )
+            }
+                            
             }
         }
     }
