@@ -722,6 +722,42 @@ private fun SelectedStreamBanner(
         }
     }
 }
+@Composable
+private fun StreamVideoPlayer(
+    streamUrl: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val exoPlayer = remember(streamUrl) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(streamUrl))
+            prepare()
+            playWhenReady = true
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = true
+            }
+        },
+        update = { playerView ->
+            playerView.player = exoPlayer
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .height(210.dp)
+            .clip(RoundedCornerShape(12.dp))
+    )
+}
 
 @Composable
 private fun CategoriesGridView(
