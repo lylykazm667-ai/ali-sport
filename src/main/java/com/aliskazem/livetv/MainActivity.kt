@@ -740,6 +740,126 @@ if (activeUrl.isNotBlank()) {
             )
         }
     }
+    @Composable
+private fun FullScreenStreamPlayer(
+    channel: ChannelItem,
+    useBackupStream: Boolean,
+    onToggleBackup: () -> Unit,
+    onBackToChannels: () -> Unit
+) {
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val activeUrl = if (useBackupStream && !channel.backupUrl.isNullOrBlank()) {
+        channel.backupUrl!!
+    } else {
+        channel.url
+    }
+
+    var isLandscape by remember { mutableStateOf(false) }
+
+    fun setLandscapeMode(enable: Boolean) {
+        isLandscape = enable
+        activity?.requestedOrientation = if (enable) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
+    val exoPlayer = remember(activeUrl) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(activeUrl))
+            prepare()
+            playWhenReady = true
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = true
+                }
+            },
+            update = { playerView ->
+                playerView.player = exoPlayer
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .background(Color.Black.copy(alpha = 0.55f))
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = {
+                    setLandscapeMode(false)
+                    onBackToChannels()
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "رجوع",
+                        tint = Color.White
+                    )
+                }
+                Text(
+                    text = channel.name,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    maxLines = 1
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!channel.backupUrl.isNullOrBlank()) {
+                    Text(
+                        text = if (useBackupStream) "الأساسي" else "احتياطي",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.DarkGray.copy(alpha = 0.85f))
+                            .clickable { onToggleBackup() }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+
+                IconButton(onClick = { setLandscapeMode(!isLandscape) }) {
+                    Icon(
+                        imageVector = if (isLandscape) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                        contentDescription = "ملء الشاشة بالعرض",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
 }
 @Composable
 private fun StreamVideoPlayer(
