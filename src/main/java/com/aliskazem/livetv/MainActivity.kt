@@ -841,7 +841,6 @@ DisposableEffect(exoPlayer) {
             },
             modifier = Modifier.fillMaxSize()
         )
-    }
 
         if (showControls) {
             Row(
