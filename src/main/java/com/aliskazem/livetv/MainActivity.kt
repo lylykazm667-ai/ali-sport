@@ -637,7 +637,7 @@ fun AliKazemSportApp(
         }
     }
 }
-
+}
 @Composable
 private fun TopNavTab(
     label: String,
