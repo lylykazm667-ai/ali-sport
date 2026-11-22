@@ -914,16 +914,6 @@ private fun CategoriesGridView(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(bottom = 20.dp)
     ) {
-        if (selectedChannel != null) {
-            item(key = "selected_banner_cat") {
-                SelectedStreamBanner(
-                    channel = selectedChannel,
-                    useBackupStream = useBackupStream,
-                    onToggleBackup = onToggleBackup,
-                    onClose = onClearChannel
-                )
-            }
-        }
 
         items(rows) { rowItems ->
             Row(
