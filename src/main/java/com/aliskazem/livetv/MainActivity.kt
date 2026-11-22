@@ -857,13 +857,15 @@ private fun FullScreenStreamPlayer(
                     )
                 }
 
-                            IconButton(onClick = { setLandscapeMode(!isLandscape) }) {
-                Icon(
-                    imageVector = if (isLandscape) Icons.Default.ArrowBack else Icons.Default.PlayArrow,
-                    contentDescription = "ملء الشاشة بالعرض",
-                    tint = Color.White
+                                        IconButton(onClick = { setLandscapeMode(!isLandscape) }) {
+                Text(
+                    text = if (isLandscape) "↙" else "⛶",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
+
                             
             }
         }
