@@ -780,8 +780,13 @@ private fun FullScreenStreamPlayer(
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         insetsController?.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        insetsController?.hide(WindowInsetsCompat.Type.systemBars())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+    window?.attributes?.layoutInDisplayCutoutMode =
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+}
+insetsController?.hide(
+    WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+)
 
         onDispose {
             insetsController?.show(WindowInsetsCompat.Type.systemBars())
