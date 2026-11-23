@@ -3,6 +3,8 @@ package com.aliskazem.livetv
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -30,12 +32,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -101,6 +106,8 @@ data class LiveMatchItem(
     val timeText: String,
     val homeTeam: String,
     val awayTeam: String,
+    val homeCrestUrl: String? = null,
+    val awayCrestUrl: String? = null,
     val league: String,
     val status: MatchFeedStatus,
     val minute: String? = null,
@@ -111,6 +118,7 @@ data class LiveMatchItem(
 data class StandingRowItem(
     val position: Int,
     val teamName: String,
+    val crestUrl: String? = null,
     val played: Int,
     val won: Int,
     val draw: Int,
@@ -121,7 +129,7 @@ data class StandingRowItem(
 
 data class LeagueOption(
     val code: String,
-    val arabicName: String
+    val shortLabel: String
 )
 
 data class SocialAccountItem(
@@ -151,11 +159,11 @@ private val TextWhite = Color(0xFFF3F6F4)
 private val TextMuted = Color(0xFF8FA398)
 
 private val STANDING_LEAGUES = listOf(
-    LeagueOption("PL", "الإنجليزي الممتاز"),
-    LeagueOption("PD", "الإسباني"),
-    LeagueOption("SA", "الإيطالي"),
-    LeagueOption("BL1", "الألماني"),
-    LeagueOption("FL1", "الفرنسي"),
+    LeagueOption("PL", "الدوري الإنجليزي الممتاز"),
+    LeagueOption("PD", "الدوري الإسباني"),
+    LeagueOption("SA", "الدوري الإيطالي"),
+    LeagueOption("BL1", "الدوري الألماني"),
+    LeagueOption("FL1", "الدوري الفرنسي"),
     LeagueOption("CL", "دوري الأبطال")
 )
 
@@ -179,6 +187,274 @@ private val SOCIAL_ACCOUNTS = listOf(
         badgeTextColor = Color.White
     )
 )
+
+private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
+    // الإنجليزي الممتاز والفرق الإنجليزية
+    "arsenal fc" to "آرسنال",
+    "arsenal" to "آرسنال",
+    "brighton & hove albion fc" to "برايتون",
+    "brighton hove" to "برايتون",
+    "brighton" to "برايتون",
+    "manchester city fc" to "مانشستر سيتي",
+    "man city" to "مانشستر سيتي",
+    "manchester city" to "مانشستر سيتي",
+    "liverpool fc" to "ليفربول",
+    "liverpool" to "ليفربول",
+    "afc bournemouth" to "بورنموث",
+    "bournemouth" to "بورنموث",
+    "leeds united fc" to "ليدز يونايتد",
+    "leeds united" to "ليدز يونايتد",
+    "everton fc" to "إيفرتون",
+    "everton" to "إيفرتون",
+    "chelsea fc" to "تشيلسي",
+    "chelsea" to "تشيلسي",
+    "tottenham hotspur fc" to "توتنهام",
+    "tottenham" to "توتنهام",
+    "brentford fc" to "برينتفورد",
+    "brentford" to "برينتفورد",
+    "hull city afc" to "هال سيتي",
+    "hull city" to "هال سيتي",
+    "aston villa fc" to "أستون فيلا",
+    "aston villa" to "أستون فيلا",
+    "newcastle united fc" to "نيوكاسل",
+    "newcastle" to "نيوكاسل",
+    "coventry city fc" to "كوفنتري سيتي",
+    "coventry city" to "كوفنتري سيتي",
+    "fulham fc" to "فولهام",
+    "fulham" to "فولهام",
+    "ipswich town fc" to "إيبسويتش تاون",
+    "ipswich town" to "إيبسويتش تاون",
+    "nottingham forest fc" to "نوتينغهام فورست",
+    "nottingham" to "نوتينغهام فورست",
+    "sunderland afc" to "سندرلاند",
+    "sunderland" to "سندرلاند",
+    "manchester united fc" to "مانشستر يونايتد",
+    "man united" to "مانشستر يونايتد",
+    "manchester united" to "مانشستر يونايتد",
+    "crystal palace fc" to "كريستال بالاس",
+    "crystal palace" to "كريستال بالاس",
+
+    // الإسباني
+    "fc barcelona" to "برشلونة",
+    "barcelona" to "برشلونة",
+    "barça" to "برشلونة",
+    "barca" to "برشلونة",
+    "real madrid cf" to "ريال مدريد",
+    "real madrid" to "ريال مدريد",
+    "club atlético de madrid" to "أتلتيكو مدريد",
+    "atletico madrid" to "أتلتيكو مدريد",
+    "atleti" to "أتلتيكو مدريد",
+    "real betis balompié" to "ريال بيتيس",
+    "real betis" to "ريال بيتيس",
+    "real sociedad de fútbol" to "ريال سوسيداد",
+    "real sociedad" to "ريال سوسيداد",
+    "sevilla fc" to "إشبيلية",
+    "sevilla" to "إشبيلية",
+    "santander" to "راسينغ سانتاندير",
+    "racing santander" to "راسينغ سانتاندير",
+    "athletic club" to "أتلتيك بيلباو",
+    "athletic" to "أتلتيك بيلباو",
+    "deportivo alavés" to "ديبورتيفو ألافيس",
+    "alavés" to "ديبورتيفو ألافيس",
+    "alaves" to "ديبورتيفو ألافيس",
+    "villarreal cf" to "فياريال",
+    "villarreal" to "فياريال",
+    "rcd espanyol de barcelona" to "إسبانيول",
+    "espanyol" to "إسبانيول",
+    "deportivo" to "ديبورتيفو لاكورونيا",
+    "ca osasuna" to "أوساسونا",
+    "osasuna" to "أوساسونا",
+    "rc celta de vigo" to "سيلتا فيغو",
+    "celta" to "سيلتا فيغو",
+    "rayo vallecano de madrid" to "رايو فاليكانو",
+    "rayo vallecano" to "رايو فاليكانو",
+    "valencia cf" to "فالنسيا",
+    "valencia" to "فالنسيا",
+    "getafe cf" to "خيتافي",
+    "getafe" to "خيتافي",
+    "levante ud" to "ليفانتي",
+    "levante" to "ليفانتي",
+    "elche cf" to "إلتشي",
+    "elche" to "إلتشي",
+    "málaga cf" to "ملقا",
+    "málaga" to "ملقا",
+    "malaga" to "ملقا",
+
+    // الإيطالي
+    "ss lazio" to "لاتسيو",
+    "lazio" to "لاتسيو",
+    "as roma" to "روما",
+    "roma" to "روما",
+    "fc internazionale milano" to "إنتر ميلان",
+    "inter" to "إنتر ميلان",
+    "inter milan" to "إنتر ميلان",
+    "ac milan" to "ميلان",
+    "milan" to "ميلان",
+    "como 1907" to "كومو",
+    "como" to "كومو",
+    "juventus fc" to "يوفنتوس",
+    "juventus" to "يوفنتوس",
+    "frosinone calcio" to "فروسينوني",
+    "frosinone" to "فروسينوني",
+    "ssc napoli" to "نابولي",
+    "napoli" to "نابولي",
+    "bologna fc 1909" to "بولونيا",
+    "bologna" to "بولونيا",
+    "genoa cfc" to "جنوى",
+    "genoa" to "جنوى",
+    "cagliari calcio" to "كالياري",
+    "cagliari" to "كالياري",
+    "atalanta bc" to "أتالانتا",
+    "atalanta" to "أتالانتا",
+    "torino fc" to "تورينو",
+    "torino" to "تورينو",
+    "us lecce" to "ليتشي",
+    "lecce" to "ليتشي",
+    "acf fiorentina" to "فيورنتينا",
+    "fiorentina" to "فيورنتينا",
+    "parma calcio 1913" to "بارما",
+    "parma" to "بارما",
+    "us sassuolo calcio" to "ساسولو",
+    "sassuolo" to "ساسولو",
+    "ac monza" to "مونزا",
+    "monza" to "مونزا",
+    "udinese calcio" to "أودينيزي",
+    "udinese" to "أودينيزي",
+    "venezia fc" to "فينيزيا",
+    "venezia" to "فينيزيا",
+
+    // الألماني
+    "borussia dortmund" to "بوروسيا دورتموند",
+    "dortmund" to "بوروسيا دورتموند",
+    "fc bayern münchen" to "بايرن ميونخ",
+    "bayern munich" to "بايرن ميونخ",
+    "bayern" to "بايرن ميونخ",
+    "sc freiburg" to "فرايبورغ",
+    "freiburg" to "فرايبورغ",
+    "rb leipzig" to "لايبزيغ",
+    "leipzig" to "لايبزيغ",
+    "bayer 04 leverkusen" to "باير ليفركوزن",
+    "leverkusen" to "باير ليفركوزن",
+    "sv werder bremen" to "فيردر بريمن",
+    "bremen" to "فيردر بريمن",
+    "eintracht frankfurt" to "آينتراخت فرانكفورت",
+    "frankfurt" to "آينتراخت فرانكفورت",
+    "vfb stuttgart" to "شتوتغارت",
+    "stuttgart" to "شتوتغارت",
+    "sv elversberg" to "إلفيرسبيرغ",
+    "elversberg" to "إلفيرسبيرغ",
+    "fc augsburg" to "أوغسبورغ",
+    "augsburg" to "أوغسبورغ",
+    "tsg 1899 hoffenheim" to "هوفنهايم",
+    "hoffenheim" to "هوفنهايم",
+    "hamburger sv" to "هامبورغ",
+    "hsv" to "هامبورغ",
+    "1. fsv mainz 05" to "ماينتس",
+    "mainz" to "ماينتس",
+    "1. fc köln" to "كولن",
+    "fc köln" to "كولن",
+    "sc paderborn 07" to "بادربورن",
+    "sc paderborn" to "بادربورن",
+    "fc schalke 04" to "شالكه",
+    "schalke" to "شالكه",
+    "1. fc union berlin" to "يونيون برلين",
+    "union berlin" to "يونيون برلين",
+    "borussia mönchengladbach" to "بوروسيا مونشنغلادباخ",
+    "m'gladbach" to "بوروسيا مونشنغلادباخ",
+
+    // الفرنسي
+    "paris saint-germain fc" to "باريس سان جيرمان",
+    "paris saint-germain" to "باريس سان جيرمان",
+    "psg" to "باريس سان جيرمان",
+    "paris fc" to "باريس إف سي",
+    "lille osc" to "ليل",
+    "lille" to "ليل",
+    "olympique lyonnais" to "أولمبيك ليون",
+    "olympique lyon" to "أولمبيك ليون",
+    "olympique de marseille" to "مارسيليا",
+    "marseille" to "مارسيليا",
+    "stade brestois 29" to "بريست",
+    "brest" to "بريست",
+    "ogc nice" to "نيس",
+    "nice" to "نيس",
+    "as monaco fc" to "موناكو",
+    "monaco" to "موناكو",
+    "stade rennais fc 1901" to "رين",
+    "stade rennais" to "رين",
+    "fc lorient" to "لوريان",
+    "lorient" to "لوريان",
+    "rc lens" to "لانس",
+    "toulouse fc" to "تولوز",
+    "toulouse" to "تولوز",
+    "le mans fc" to "لو مان",
+    "le mans" to "لو مان",
+    "estac troyes" to "تروا",
+    "troyes" to "تروا",
+    "aj auxerre" to "أوكسير",
+    "auxerre" to "أوكسير",
+    "rc strasbourg alsace" to "ستراسبورغ",
+    "strasbourg" to "ستراسبورغ",
+    "angers sco" to "أنجيه",
+    "le havre ac" to "لو هافر",
+    "le havre" to "لو هافر",
+
+    // أندية أوروبية أخرى
+    "club brugge kv" to "كلوب بروج",
+    "club brugge" to "كلوب بروج",
+    "sporting clube de portugal" to "سبورتينغ لشبونة",
+    "sporting cp" to "سبورتينغ لشبونة",
+    "lask" to "لاسك",
+    "galatasaray sk" to "غلطة سراي",
+    "galatasaray" to "غلطة سراي",
+    "fenerbahçe sk" to "فنربخشة",
+    "fenerbahçe" to "فنربخشة",
+    "fc shakhtar donetsk" to "شاختار دونيتسك",
+    "shaktar" to "شاختار دونيتسك"
+)
+
+private object CrestMemoryCache {
+    private val cache = mutableMapOf<String, Bitmap>()
+
+    @Synchronized
+    fun get(url: String): Bitmap? = cache[url]
+
+    @Synchronized
+    fun put(url: String, bitmap: Bitmap) {
+        if (cache.size > 180) {
+            cache.clear()
+        }
+        cache[url] = bitmap
+    }
+}
+
+private suspend fun fetchBitmapFromUrl(urlString: String): Bitmap? {
+    if (urlString.isBlank()) return null
+    CrestMemoryCache.get(urlString)?.let { return it }
+    return withContext(Dispatchers.IO) {
+        var conn: HttpURLConnection? = null
+        try {
+            val url = URL(urlString)
+            conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 8000
+            }
+            if (conn.responseCode in 200..299) {
+                val bmp = conn.inputStream.use { BitmapFactory.decodeStream(it) }
+                if (bmp != null) {
+                    CrestMemoryCache.put(urlString, bmp)
+                }
+                bmp
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        } finally {
+            conn?.disconnect()
+        }
+    }
+}
 
 private fun isBrazilianCompetition(text: String): Boolean {
     val normalized = text.lowercase(Locale.ROOT).trim()
@@ -216,47 +492,7 @@ private fun translateCompetitionName(rawName: String, code: String? = null): Str
 
 private fun translateTeamName(rawTeam: String): String {
     val clean = rawTeam.trim()
-    val map = mapOf(
-        "manchester city fc" to "مانشستر سيتي",
-        "manchester city" to "مانشستر سيتي",
-        "arsenal fc" to "آرسنال",
-        "arsenal" to "آرسنال",
-        "liverpool fc" to "ليفربول",
-        "liverpool" to "ليفربول",
-        "chelsea fc" to "تشيلسي",
-        "chelsea" to "تشيلسي",
-        "manchester united fc" to "مانشستر يونايتد",
-        "manchester united" to "مانشستر يونايتد",
-        "tottenham hotspur fc" to "توتنهام",
-        "tottenham hotspur" to "توتنهام",
-        "newcastle united fc" to "نيوكاسل يونايتد",
-        "aston villa fc" to "أستون فيلا",
-        "everton fc" to "إيفرتون",
-        "brentford fc" to "برينتفورد",
-        "fulham fc" to "فولهام",
-        "real madrid cf" to "ريال مدريد",
-        "real madrid" to "ريال مدريد",
-        "fc barcelona" to "برشلونة",
-        "barcelona" to "برشلونة",
-        "club atlético de madrid" to "أتلتيكو مدريد",
-        "atletico madrid" to "أتلتيكو مدريد",
-        "fc internazionale milano" to "إنتر ميلان",
-        "inter milan" to "إنتر ميلان",
-        "ac milan" to "ميلان",
-        "juventus fc" to "يوفنتوس",
-        "juventus" to "يوفنتوس",
-        "ssc napoli" to "نابولي",
-        "napoli" to "نابولي",
-        "as roma" to "روما",
-        "ss lazio" to "لاتسيو",
-        "acf fiorentina" to "فيورنتينا",
-        "fc bayern münchen" to "بايرن ميونخ",
-        "bayern munich" to "بايرن ميونخ",
-        "borussia dortmund" to "بوروسيا دورتموند",
-        "paris saint-germain fc" to "باريس سان جيرمان",
-        "paris saint-germain" to "باريس سان جيرمان"
-    )
-    return map[clean.lowercase(Locale.ROOT)] ?: clean
+    return TEAM_ARABIC_NAMES[clean.lowercase(Locale.ROOT)] ?: clean
 }
 
 private fun buildBaghdadDays(): List<DayOption> {
@@ -375,6 +611,8 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
                     ?: awayObj?.optString("name", "الفريق الثاني")
                     ?: "الفريق الثاني"
             )
+            val homeCrest = homeObj?.optString("crest")?.takeIf { it.isNotBlank() && it != "null" }
+            val awayCrest = awayObj?.optString("crest")?.takeIf { it.isNotBlank() && it != "null" }
 
             val scoreObj = item.optJSONObject("score")
             val fullTimeObj = scoreObj?.optJSONObject("fullTime")
@@ -392,6 +630,8 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
                     timeText = bTime,
                     homeTeam = homeName,
                     awayTeam = awayName,
+                    homeCrestUrl = homeCrest,
+                    awayCrestUrl = awayCrest,
                     league = translateCompetitionName(compNameRaw, compCode),
                     status = status,
                     minute = minuteVal,
@@ -435,11 +675,13 @@ private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRo
                     ?: ""
             )
             if (teamName.isBlank()) continue
+            val crest = teamObj?.optString("crest")?.takeIf { it.isNotBlank() && it != "null" }
 
             rows.add(
                 StandingRowItem(
                     position = row.optInt("position", i + 1),
                     teamName = teamName,
+                    crestUrl = crest,
                     played = row.optInt("playedGames", 0),
                     won = row.optInt("won", 0),
                     draw = row.optInt("draw", 0),
@@ -856,159 +1098,209 @@ fun AliKazemSportApp(
     accounts: List<SocialAccountItem>
 ) {
     // 0: حساباتي | 1: جدول المباريات والترتيب | 2: قنوات البث
-    var selectedTab by remember { mutableIntStateOf(2) }
+    var selectedTab by remember { mutableIntStateOf(1) }
     var isArabic by remember { mutableStateOf(true) }
     var activeCategory by remember { mutableStateOf<CategoryItem?>(null) }
     var selectedChannel by remember { mutableStateOf<ChannelItem?>(null) }
     var useBackupStream by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ScreenBg)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-    ) {
-        if (selectedChannel != null) {
-            FullScreenStreamPlayer(
-                channel = selectedChannel!!,
-                useBackupStream = useBackupStream,
-                onToggleBackup = { useBackupStream = !useBackupStream },
-                onBackToChannels = {
-                    selectedChannel = null
-                    useBackupStream = false
-                }
-            )
-        } else {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // البطاقة العلوية: زر اللغة + العنوان + الشعار الدائري
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(PanelBg)
-                        .border(1.dp, BorderGreen, RoundedCornerShape(22.dp))
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Box(
+    val layoutDir = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
+
+    CompositionLocalProvider(LocalLayoutDirection provides layoutDir) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(ScreenBg)
+                .padding(horizontal = 14.dp, vertical = 12.dp)
+        ) {
+            if (selectedChannel != null) {
+                FullScreenStreamPlayer(
+                    channel = selectedChannel!!,
+                    useBackupStream = useBackupStream,
+                    onToggleBackup = { useBackupStream = !useBackupStream },
+                    onBackToChannels = {
+                        selectedChannel = null
+                        useBackupStream = false
+                    }
+                )
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // البطاقة العلوية: زر اللغة + العنوان + الشعار الدائري
+                    Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(ActiveGreen)
-                            .clickable { isArabic = !isArabic }
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(PanelBg)
+                            .border(1.dp, BorderGreen, RoundedCornerShape(22.dp))
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(ActiveGreen)
+                                .clickable { isArabic = !isArabic }
+                                .padding(horizontal = 14.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isArabic) "عربي" else "EN",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+
                         Text(
-                            text = if (isArabic) "عربي" else "EN",
-                            color = Color.White,
+                            text = if (isArabic) "علي كاظم سبورت" else "Ali Kazem Sport",
+                            color = TextWhite,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 20.sp
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .size(54.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.radialGradient(
+                                        colors = listOf(Color(0xFF1B5E20), Color(0xFF071A0E))
+                                    )
+                                )
+                                .border(2.dp, ActiveGreen, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val logoDrawableId = rememberDrawableId(appLogoAsset)
+                            if (logoDrawableId != 0) {
+                                Image(
+                                    painter = painterResource(id = logoDrawableId),
+                                    contentDescription = "Ali Kazem SPORTS",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Text(
+                                    text = "Ali Kazem\nSPORTS",
+                                    color = Color(0xFFFEF5E9),
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 9.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // شريط التبويب الثلاثي
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(PanelBg)
+                            .border(1.dp, BorderGreen, RoundedCornerShape(20.dp))
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TopNavTab(
+                            label = if (isArabic) "قنوات البث" else "Live TV",
+                            iconGlyph = "▣",
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            modifier = Modifier.weight(1f)
+                        )
+                        TopNavTab(
+                            label = if (isArabic) "جدول المباريات" else "Matches",
+                            iconGlyph = "▦",
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            modifier = Modifier.weight(1f)
+                        )
+                        TopNavTab(
+                            label = if (isArabic) "حساباتي" else "Accounts",
+                            iconGlyph = "⑂",
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            modifier = Modifier.weight(1f)
                         )
                     }
 
-                    Text(
-                        text = if (isArabic) "علي كاظم سبورت" else "Ali Kazem Sport",
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    colors = listOf(Color(0xFF1B5E20), Color(0xFF071A0E))
+                    when (selectedTab) {
+                        2 -> {
+                            val currentCategory = activeCategory
+                            if (currentCategory == null) {
+                                CategoriesGridView(
+                                    categories = categories,
+                                    onSelectCategory = { cat -> activeCategory = cat }
                                 )
-                            )
-                            .border(2.dp, ActiveGreen, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val logoDrawableId = rememberDrawableId(appLogoAsset)
-                        if (logoDrawableId != 0) {
-                            Image(
-                                painter = painterResource(id = logoDrawableId),
-                                contentDescription = "Ali Kazem SPORTS",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Text(
-                                text = "Ali Kazem\nSPORTS",
-                                color = Color(0xFFFEF5E9),
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                textAlign = TextAlign.Center,
-                                lineHeight = 9.sp
-                            )
+                            } else {
+                                CategoryChannelsListView(
+                                    category = currentCategory,
+                                    selectedChannel = selectedChannel,
+                                    onBackToCategories = { activeCategory = null },
+                                    onSelectChannel = { ch ->
+                                        selectedChannel = ch
+                                        useBackupStream = false
+                                    }
+                                )
+                            }
                         }
+                        1 -> MatchesAndStandingsView(fallbackMatches = fallbackMatches)
+                        else -> AccountsTabView(accounts = accounts)
                     }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // شريط التبويب الثلاثي
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(PanelBg)
-                        .border(1.dp, BorderGreen, RoundedCornerShape(20.dp))
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TopNavTab(
-                        label = if (isArabic) "حساباتي" else "Accounts",
-                        iconGlyph = "⑂",
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        modifier = Modifier.weight(1f)
-                    )
-                    TopNavTab(
-                        label = if (isArabic) "جدول المباريات" else "Matches",
-                        iconGlyph = "▦",
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        modifier = Modifier.weight(1f)
-                    )
-                    TopNavTab(
-                        label = if (isArabic) "قنوات البث" else "Live TV",
-                        iconGlyph = "▣",
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                when (selectedTab) {
-                    2 -> {
-                        val currentCategory = activeCategory
-                        if (currentCategory == null) {
-                            CategoriesGridView(
-                                categories = categories,
-                                onSelectCategory = { cat -> activeCategory = cat }
-                            )
-                        } else {
-                            CategoryChannelsListView(
-                                category = currentCategory,
-                                selectedChannel = selectedChannel,
-                                onBackToCategories = { activeCategory = null },
-                                onSelectChannel = { ch ->
-                                    selectedChannel = ch
-                                    useBackupStream = false
-                                }
-                            )
-                        }
-                    }
-                    1 -> MatchesAndStandingsView(fallbackMatches = fallbackMatches)
-                    else -> AccountsTabView(accounts = accounts)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RemoteCrestBadge(
+    crestUrl: String?,
+    fallbackLabel: String,
+    modifier: Modifier = Modifier
+) {
+    var bitmap by remember(crestUrl) {
+        mutableStateOf(crestUrl?.let { CrestMemoryCache.get(it) })
+    }
+
+    LaunchedEffect(crestUrl) {
+        if (bitmap == null && !crestUrl.isNullOrBlank()) {
+            bitmap = fetchBitmapFromUrl(crestUrl)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(TileInnerBg)
+            .border(1.dp, BorderGreen, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        val loaded = bitmap
+        if (loaded != null) {
+            Image(
+                bitmap = loaded.asImageBitmap(),
+                contentDescription = fallbackLabel,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(2.dp)
+            )
+        } else {
+            Text(
+                text = fallbackLabel.take(2),
+                color = ActiveGreen,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
         }
     }
 }
@@ -1302,15 +1594,24 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(
-                                    text = match.homeTeam,
-                                    color = TextWhite,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     modifier = Modifier.weight(1f)
-                                )
+                                ) {
+                                    RemoteCrestBadge(
+                                        crestUrl = match.homeCrestUrl,
+                                        fallbackLabel = match.homeTeam
+                                    )
+                                    Text(
+                                        text = match.homeTeam,
+                                        color = TextWhite,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
 
                                 Text(
                                     text = if (hasScore) "${match.homeScore} - ${match.awayScore}" else match.timeText,
@@ -1325,16 +1626,26 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                         .padding(horizontal = 10.dp, vertical = 4.dp)
                                 )
 
-                                Text(
-                                    text = match.awayTeam,
-                                    color = TextWhite,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    textAlign = TextAlign.End,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     modifier = Modifier.weight(1f)
-                                )
+                                ) {
+                                    Text(
+                                        text = match.awayTeam,
+                                        color = TextWhite,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        textAlign = TextAlign.End,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    RemoteCrestBadge(
+                                        crestUrl = match.awayCrestUrl,
+                                        fallbackLabel = match.awayTeam
+                                    )
+                                }
                             }
                         }
                     }
@@ -1358,7 +1669,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            text = league.arabicName,
+                            text = league.shortLabel,
                             color = if (selected) Color.White else TextMuted,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
@@ -1405,13 +1716,13 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("#", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp))
+                    Text("#", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
                     Text("الفريق", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Text("لعب", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
-                    Text("ف", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
-                    Text("ت", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
-                    Text("خ", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
-                    Text("نقاط", color = ActiveGreen, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(38.dp), textAlign = TextAlign.Center)
+                    Text("لعب", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
+                    Text("ف", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                    Text("ت", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                    Text("خ", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                    Text("نقاط", color = ActiveGreen, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(36.dp), textAlign = TextAlign.Center)
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -1436,27 +1747,36 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                 color = if (row.position <= 4) ActiveGreen else TextMuted,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.width(26.dp)
+                                modifier = Modifier.width(24.dp)
                             )
-                            Text(
-                                text = row.teamName,
-                                color = TextWhite,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.weight(1f)
-                            )
-                            Text("${row.played}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
-                            Text("${row.won}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
-                            Text("${row.draw}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
-                            Text("${row.lost}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
+                            ) {
+                                RemoteCrestBadge(
+                                    crestUrl = row.crestUrl,
+                                    fallbackLabel = row.teamName
+                                )
+                                Text(
+                                    text = row.teamName,
+                                    color = TextWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Text("${row.played}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
+                            Text("${row.won}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                            Text("${row.draw}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                            Text("${row.lost}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
                             Text(
                                 text = "${row.points}",
                                 color = ActiveGreen,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                modifier = Modifier.width(38.dp),
+                                modifier = Modifier.width(36.dp),
                                 textAlign = TextAlign.Center
                             )
                         }
