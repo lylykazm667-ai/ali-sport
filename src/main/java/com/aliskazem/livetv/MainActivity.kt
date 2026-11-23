@@ -255,7 +255,6 @@ private val SOCIAL_ACCOUNTS = listOf(
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
-    // إنجلترا
     "arsenal" to "آرسنال",
     "brighton hove albion" to "برايتون",
     "brighton hove" to "برايتون",
@@ -291,7 +290,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "west ham united" to "وست هام",
     "wolverhampton wanderers" to "وولفرهامبتون",
 
-    // إسبانيا
     "barcelona" to "برشلونة",
     "barca" to "برشلونة",
     "real madrid" to "ريال مدريد",
@@ -322,7 +320,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "girona" to "جيرونا",
     "mallorca" to "مايوركا",
 
-    // إيطاليا
     "lazio" to "لاتسيو",
     "roma" to "روما",
     "internazionale milano" to "إنتر ميلان",
@@ -350,7 +347,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "verona" to "هيلاس فيرونا",
     "hellas verona" to "هيلاس فيرونا",
 
-    // ألمانيا
     "borussia dortmund" to "بوروسيا دورتموند",
     "dortmund" to "بوروسيا دورتموند",
     "bayern munchen" to "بايرن ميونخ",
@@ -389,7 +385,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "schalke" to "شالكه",
     "schalke 04" to "شالكه",
 
-    // فرنسا
     "paris saint germain" to "باريس سان جيرمان",
     "psg" to "باريس سان جيرمان",
     "paris" to "باريس سان جيرمان",
@@ -417,7 +412,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "le mans" to "لومان",
     "troyes" to "تروا",
 
-    // السعودية
     "hilal" to "الهلال",
     "hilal saudi" to "الهلال",
     "nassr" to "النصر",
@@ -430,7 +424,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "fateh" to "الفتح",
     "ettifaq" to "الاتفاق",
 
-    // العراق
     "shorta" to "الشرطة",
     "quwa al jawiya" to "القوة الجوية",
     "zawra a" to "الزوراء",
@@ -444,7 +437,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "karbala" to "كربلاء",
     "karma" to "الكرمة",
 
-    // أفريقيا وبطولات أخرى
     "ahly" to "الأهلي المصري",
     "zamalek" to "الزمالك",
     "mamelodi sundowns" to "ماميلودي صن داونز",
@@ -523,37 +515,35 @@ private fun transliterateToArabic(raw: String): String {
 
     val sb = StringBuilder()
     for (ch in lower) {
-        sb.append(
-            when (ch) {
-                'a' -> 'ا'
-                'b' -> 'ب'
-                'c' -> 'ك'
-                'd' -> 'د'
-                'e' -> 'ي'
-                'f' -> 'ف'
-                'g' -> 'غ'
-                'h' -> 'ه'
-                'i' -> 'ي'
-                'j' -> 'ج'
-                'k' -> 'ك'
-                'l' -> 'ل'
-                'm' -> 'م'
-                'n' -> 'ن'
-                'o' -> 'و'
-                'p' -> 'ب'
-                'q' -> 'ك'
-                'r' -> 'ر'
-                's' -> 'س'
-                't' -> 'ت'
-                'u' -> 'و'
-                'v' -> 'ف'
-                'w' -> 'و'
-                'x' -> 'كس'
-                'y' -> 'ي'
-                'z' -> 'ز'
-                else -> ch
-            }
-        )
+        when (ch) {
+            'a' -> sb.append('ا')
+            'b' -> sb.append('ب')
+            'c' -> sb.append('ك')
+            'd' -> sb.append('د')
+            'e' -> sb.append('ي')
+            'f' -> sb.append('ف')
+            'g' -> sb.append('غ')
+            'h' -> sb.append('ه')
+            'i' -> sb.append('ي')
+            'j' -> sb.append('ج')
+            'k' -> sb.append('ك')
+            'l' -> sb.append('ل')
+            'm' -> sb.append('م')
+            'n' -> sb.append('ن')
+            'o' -> sb.append('و')
+            'p' -> sb.append('ب')
+            'q' -> sb.append('ك')
+            'r' -> sb.append('ر')
+            's' -> sb.append('س')
+            't' -> sb.append('ت')
+            'u' -> sb.append('و')
+            'v' -> sb.append('ف')
+            'w' -> sb.append('و')
+            'x' -> sb.append("كس")
+            'y' -> sb.append('ي')
+            'z' -> sb.append('ز')
+            else -> sb.append(ch)
+        }
     }
     return sb.toString().replace(Regex("\\s+"), " ").trim()
 }
