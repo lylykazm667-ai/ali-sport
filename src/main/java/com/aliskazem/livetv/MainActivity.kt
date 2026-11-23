@@ -79,6 +79,7 @@ import kotlin.math.sin
 
 private const val FOOTBALL_DATA_API_KEY = "b11ae4a8257e485a83389f1ef51b8df8"
 private const val API_FOOTBALL_KEY = "cff0d26710ee2ab9ac363f5c81cf74b1"
+private const val CURRENT_SEASON = 2026
 
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
@@ -198,16 +199,16 @@ private val STANDING_LEAGUES = listOf(
 )
 
 private val LEAGUE_ORDER_PRIORITY: Map<String, Int> = mapOf(
-    "CL" to 1,
-    "PL" to 2,
-    "PD" to 3,
-    "SA" to 4,
-    "BL1" to 5,
-    "FL1" to 6,
-    "SAU" to 7,
-    "IRQ" to 8,
-    "ACL" to 9,
-    "CAFCL" to 10
+    "IRQ" to 1,
+    "SAU" to 2,
+    "ACL" to 3,
+    "CAFCL" to 4,
+    "CL" to 5,
+    "PL" to 6,
+    "PD" to 7,
+    "SA" to 8,
+    "BL1" to 9,
+    "FL1" to 10
 )
 
 private val LEAGUE_LOGO_URLS: Map<String, String> = mapOf(
@@ -228,39 +229,6 @@ private val API_FOOTBALL_LEAGUE_IDS: Map<String, List<Int>> = mapOf(
     "IRQ" to listOf(542, 748),
     "ACL" to listOf(17, 946),
     "CAFCL" to listOf(12)
-)
-
-private val FALLBACK_STANDINGS_BY_LEAGUE: Map<String, List<StandingRowItem>> = mapOf(
-    "SAU" to listOf(
-        StandingRowItem(1, "الهلال", null, 11, 9, 2, 0, 19, 29),
-        StandingRowItem(2, "الاتحاد", null, 11, 9, 0, 2, 16, 27),
-        StandingRowItem(3, "النصر", null, 11, 7, 3, 1, 14, 24),
-        StandingRowItem(4, "الأهلي السعودي", null, 11, 6, 2, 3, 8, 20),
-        StandingRowItem(5, "القادسية", null, 11, 6, 1, 4, 5, 19),
-        StandingRowItem(6, "الشباب السعودي", null, 11, 5, 3, 3, 3, 18)
-    ),
-    "IRQ" to listOf(
-        StandingRowItem(1, "الشرطة", null, 10, 8, 1, 1, 14, 25),
-        StandingRowItem(2, "الزوراء", null, 10, 7, 2, 1, 11, 23),
-        StandingRowItem(3, "القوة الجوية", null, 10, 6, 2, 2, 7, 20),
-        StandingRowItem(4, "الطلبة", null, 10, 5, 3, 2, 4, 18),
-        StandingRowItem(5, "دهوك", null, 10, 5, 2, 3, 3, 17),
-        StandingRowItem(6, "النجف", null, 10, 4, 3, 3, 1, 15)
-    ),
-    "ACL" to listOf(
-        StandingRowItem(1, "الهلال", null, 5, 4, 1, 0, 10, 13),
-        StandingRowItem(2, "النصر", null, 5, 4, 0, 1, 8, 12),
-        StandingRowItem(3, "الأهلي السعودي", null, 5, 3, 1, 1, 6, 10),
-        StandingRowItem(4, "الشرطة", null, 5, 2, 1, 2, 0, 7),
-        StandingRowItem(5, "السد", null, 5, 2, 0, 3, -2, 6)
-    ),
-    "CAFCL" to listOf(
-        StandingRowItem(1, "الأهلي المصري", null, 5, 4, 1, 0, 9, 13),
-        StandingRowItem(2, "ماميلودي صن داونز", null, 5, 3, 1, 1, 5, 10),
-        StandingRowItem(3, "الترجي التونسي", null, 5, 3, 0, 2, 3, 9),
-        StandingRowItem(4, "الرجاء الرياضي", null, 5, 2, 1, 2, 1, 7),
-        StandingRowItem(5, "الزمالك", null, 5, 1, 2, 2, -2, 5)
-    )
 )
 
 private val SOCIAL_ACCOUNTS = listOf(
@@ -285,242 +253,249 @@ private val SOCIAL_ACCOUNTS = listOf(
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
-    "arsenal fc" to "آرسنال",
+    // إنجلترا
     "arsenal" to "آرسنال",
-    "brighton & hove albion fc" to "برايتون",
+    "brighton hove albion" to "برايتون",
     "brighton hove" to "برايتون",
     "brighton" to "برايتون",
-    "manchester city fc" to "مانشستر سيتي",
-    "man city" to "مانشستر سيتي",
     "manchester city" to "مانشستر سيتي",
-    "liverpool fc" to "ليفربول",
+    "man city" to "مانشستر سيتي",
     "liverpool" to "ليفربول",
-    "afc bournemouth" to "بورنموث",
     "bournemouth" to "بورنموث",
-    "leeds united fc" to "ليدز يونايتد",
     "leeds united" to "ليدز يونايتد",
-    "everton fc" to "إيفرتون",
     "everton" to "إيفرتون",
-    "chelsea fc" to "تشيلسي",
     "chelsea" to "تشيلسي",
-    "tottenham hotspur fc" to "توتنهام",
+    "tottenham hotspur" to "توتنهام",
     "tottenham" to "توتنهام",
-    "brentford fc" to "برينتفورد",
     "brentford" to "برينتفورد",
-    "aston villa fc" to "أستون فيلا",
     "aston villa" to "أستون فيلا",
-    "newcastle united fc" to "نيوكاسل",
+    "newcastle united" to "نيوكاسل",
     "newcastle" to "نيوكاسل",
-    "fulham fc" to "فولهام",
     "fulham" to "فولهام",
-    "nottingham forest fc" to "نوتينغهام فورست",
+    "nottingham forest" to "نوتينغهام فورست",
     "nottingham" to "نوتينغهام فورست",
-    "manchester united fc" to "مانشستر يونايتد",
-    "man united" to "مانشستر يونايتد",
     "manchester united" to "مانشستر يونايتد",
-    "crystal palace fc" to "كريستال بالاس",
+    "man united" to "مانشستر يونايتد",
     "crystal palace" to "كريستال بالاس",
+    "hull city" to "هال سيتي",
+    "hull" to "هال سيتي",
+    "coventry city" to "كوفنتري سيتي",
+    "coventry" to "كوفنتري سيتي",
+    "ipswich town" to "إيبسويتش تاون",
+    "ipswich" to "إيبسويتش تاون",
+    "sunderland" to "سندرلاند",
+    "leicester city" to "ليستر سيتي",
+    "southampton" to "ساوثهامبتون",
+    "west ham united" to "وست هام",
+    "wolverhampton wanderers" to "وولفرهامبتون",
 
-    "fc barcelona" to "برشلونة",
+    // إسبانيا
     "barcelona" to "برشلونة",
-    "barça" to "برشلونة",
     "barca" to "برشلونة",
-    "real madrid cf" to "ريال مدريد",
     "real madrid" to "ريال مدريد",
-    "club atlético de madrid" to "أتلتيكو مدريد",
     "atletico madrid" to "أتلتيكو مدريد",
     "atleti" to "أتلتيكو مدريد",
-    "real betis balompié" to "ريال بيتيس",
     "real betis" to "ريال بيتيس",
-    "real sociedad de fútbol" to "ريال سوسيداد",
     "real sociedad" to "ريال سوسيداد",
-    "sevilla fc" to "إشبيلية",
     "sevilla" to "إشبيلية",
-    "athletic club" to "أتلتيك بيلباو",
     "athletic" to "أتلتيك بيلباو",
-    "deportivo alavés" to "ديبورتيفو ألافيس",
-    "alavés" to "ديبورتيفو ألافيس",
+    "athletic bilbao" to "أتلتيك بيلباو",
+    "deportivo alaves" to "ديبورتيفو ألافيس",
     "alaves" to "ديبورتيفو ألافيس",
-    "villarreal cf" to "فياريال",
     "villarreal" to "فياريال",
-    "rcd espanyol de barcelona" to "إسبانيول",
     "espanyol" to "إسبانيول",
-    "ca osasuna" to "أوساسونا",
     "osasuna" to "أوساسونا",
-    "rc celta de vigo" to "سيلتا فيغو",
     "celta" to "سيلتا فيغو",
-    "rayo vallecano de madrid" to "رايو فاليكانو",
+    "celta vigo" to "سيلتا فيغو",
     "rayo vallecano" to "رايو فاليكانو",
-    "valencia cf" to "فالنسيا",
     "valencia" to "فالنسيا",
-    "getafe cf" to "خيتافي",
     "getafe" to "خيتافي",
-    "levante ud" to "ليفانتي",
     "levante" to "ليفانتي",
-    "elche cf" to "إلتشي",
     "elche" to "إلتشي",
+    "santander" to "راسينغ سانتاندير",
+    "racing santander" to "راسينغ سانتاندير",
+    "deportivo" to "ديبورتيفو لاكورونيا",
+    "deportivo la coruna" to "ديبورتيفو لاكورونيا",
+    "malaga" to "ملقا",
+    "girona" to "جيرونا",
+    "mallorca" to "مايوركا",
 
-    "ss lazio" to "لاتسيو",
+    // إيطاليا
     "lazio" to "لاتسيو",
-    "as roma" to "روما",
     "roma" to "روما",
-    "fc internazionale milano" to "إنتر ميلان",
-    "inter" to "إنتر ميلان",
+    "internazionale milano" to "إنتر ميلان",
     "inter milan" to "إنتر ميلان",
-    "ac milan" to "ميلان",
+    "inter" to "إنتر ميلان",
     "milan" to "ميلان",
-    "como 1907" to "كومو",
+    "ac milan" to "ميلان",
     "como" to "كومو",
-    "juventus fc" to "يوفنتوس",
     "juventus" to "يوفنتوس",
-    "ssc napoli" to "نابولي",
     "napoli" to "نابولي",
-    "bologna fc 1909" to "بولونيا",
     "bologna" to "بولونيا",
-    "genoa cfc" to "جنوى",
     "genoa" to "جنوى",
-    "cagliari calcio" to "كالياري",
     "cagliari" to "كالياري",
-    "atalanta bc" to "أتالانتا",
     "atalanta" to "أتالانتا",
-    "torino fc" to "تورينو",
     "torino" to "تورينو",
-    "us lecce" to "ليتشي",
     "lecce" to "ليتشي",
-    "acf fiorentina" to "فيورنتينا",
     "fiorentina" to "فيورنتينا",
-    "parma calcio 1913" to "بارما",
     "parma" to "بارما",
-    "us sassuolo calcio" to "ساسولو",
     "sassuolo" to "ساسولو",
-    "ac monza" to "مونزا",
     "monza" to "مونزا",
-    "udinese calcio" to "أودينيزي",
     "udinese" to "أودينيزي",
+    "frosinone" to "فروسينوني",
+    "venezia" to "فينيزيا",
+    "verona" to "هيلاس فيرونا",
+    "hellas verona" to "هيلاس فيرونا",
 
+    // ألمانيا
     "borussia dortmund" to "بوروسيا دورتموند",
     "dortmund" to "بوروسيا دورتموند",
-    "fc bayern münchen" to "بايرن ميونخ",
+    "bayern munchen" to "بايرن ميونخ",
     "bayern munich" to "بايرن ميونخ",
     "bayern" to "بايرن ميونخ",
-    "sc freiburg" to "فرايبورغ",
     "freiburg" to "فرايبورغ",
     "rb leipzig" to "لايبزيغ",
     "leipzig" to "لايبزيغ",
     "bayer 04 leverkusen" to "باير ليفركوزن",
+    "bayer leverkusen" to "باير ليفركوزن",
     "leverkusen" to "باير ليفركوزن",
-    "sv werder bremen" to "فيردر بريمن",
+    "werder bremen" to "فيردر بريمن",
     "bremen" to "فيردر بريمن",
     "eintracht frankfurt" to "آينتراخت فرانكفورت",
     "frankfurt" to "آينتراخت فرانكفورت",
     "vfb stuttgart" to "شتوتغارت",
     "stuttgart" to "شتوتغارت",
-    "fc augsburg" to "أوغسبورغ",
     "augsburg" to "أوغسبورغ",
     "tsg 1899 hoffenheim" to "هوفنهايم",
     "hoffenheim" to "هوفنهايم",
+    "hamburger" to "هامبورغ",
     "hamburger sv" to "هامبورغ",
     "hsv" to "هامبورغ",
-    "1. fsv mainz 05" to "ماينتس",
+    "1 fsv mainz 05" to "ماينتس",
     "mainz" to "ماينتس",
-    "1. fc union berlin" to "يونيون برلين",
+    "1 union berlin" to "يونيون برلين",
     "union berlin" to "يونيون برلين",
-    "borussia mönchengladbach" to "بوروسيا مونشنغلادباخ",
-    "m'gladbach" to "بوروسيا مونشنغلادباخ",
+    "borussia monchengladbach" to "بوروسيا مونشنغلادباخ",
+    "m gladbach" to "بوروسيا مونشنغلادباخ",
+    "elversberg" to "إلفرسبيرغ",
+    "koln 1" to "كولن",
+    "koln" to "كولن",
+    "1 koln" to "كولن",
+    "paderborn" to "بادربورن",
+    "sc paderborn" to "بادربورن",
+    "schalke" to "شالكه",
+    "schalke 04" to "شالكه",
 
-    "paris saint-germain fc" to "باريس سان جيرمان",
-    "paris saint-germain" to "باريس سان جيرمان",
+    // فرنسا
+    "paris saint germain" to "باريس سان جيرمان",
     "psg" to "باريس سان جيرمان",
-    "lille osc" to "ليل",
+    "paris" to "باريس سان جيرمان",
+    "paris fc" to "باريس إف سي",
     "lille" to "ليل",
     "olympique lyonnais" to "أولمبيك ليون",
     "olympique lyon" to "أولمبيك ليون",
-    "olympique de marseille" to "مارسيليا",
+    "lyon" to "أولمبيك ليون",
+    "olympique marseille" to "مارسيليا",
     "marseille" to "مارسيليا",
-    "stade brestois 29" to "بريست",
     "brest" to "بريست",
-    "ogc nice" to "نيس",
+    "stade brestois 29" to "بريست",
     "nice" to "نيس",
-    "as monaco fc" to "موناكو",
     "monaco" to "موناكو",
-    "stade rennais fc 1901" to "رين",
+    "rennes" to "رين",
     "stade rennais" to "رين",
-    "fc lorient" to "لوريان",
     "lorient" to "لوريان",
-    "rc lens" to "لانس",
-    "toulouse fc" to "تولوز",
+    "lens" to "لانس",
     "toulouse" to "تولوز",
-    "aj auxerre" to "أوكسير",
     "auxerre" to "أوكسير",
-    "rc strasbourg alsace" to "ستراسبورغ",
     "strasbourg" to "ستراسبورغ",
-    "angers sco" to "أنجيه",
-    "le havre ac" to "لو هافر",
+    "angers" to "أنجيه",
     "le havre" to "لو هافر",
+    "le mans" to "لومان",
+    "troyes" to "تروا",
 
-    "al-hilal" to "الهلال",
-    "al hilal" to "الهلال",
-    "al-nassr" to "النصر",
-    "al nassr" to "النصر",
-    "al-ittihad" to "الاتحاد",
-    "al ittihad" to "الاتحاد",
-    "al-ahli" to "الأهلي السعودي",
-    "al ahli" to "الأهلي السعودي",
-    "al-shabab" to "الشباب السعودي",
-    "al-qadisiyah" to "القادسية",
-    "al-taawoun" to "التعاون",
-    "al-fateh" to "الفتح",
-    "al-ettifaq" to "الاتفاق",
+    // السعودية
+    "hilal" to "الهلال",
+    "hilal saudi" to "الهلال",
+    "nassr" to "النصر",
+    "ittihad" to "الاتحاد",
+    "ahli" to "الأهلي السعودي",
+    "ahli jeddah" to "الأهلي السعودي",
+    "shabab" to "الشباب السعودي",
+    "qadisiyah" to "القادسية",
+    "taawoun" to "التعاون",
+    "fateh" to "الفتح",
+    "ettifaq" to "الاتفاق",
 
-    "al-shorta" to "الشرطة",
-    "al shorta" to "الشرطة",
-    "al-quwa al-jawiya" to "القوة الجوية",
-    "al-zawraa" to "الزوراء",
-    "al-talaba" to "الطلبة",
+    // العراق
+    "shorta" to "الشرطة",
+    "quwa al jawiya" to "القوة الجوية",
+    "zawra a" to "الزوراء",
+    "zawraa" to "الزوراء",
+    "talaba" to "الطلبة",
+    "zakho" to "زاخو",
+    "naft" to "النفط",
     "duhok" to "دهوك",
     "erbil" to "أربيل",
     "najaf" to "النجف",
     "karbala" to "كربلاء",
+    "karma" to "الكرمة",
 
-    "al ahly" to "الأهلي المصري",
-    "al-ahly" to "الأهلي المصري",
+    // أفريقيا وبطولات أخرى
+    "ahly" to "الأهلي المصري",
     "zamalek" to "الزمالك",
     "mamelodi sundowns" to "ماميلودي صن داونز",
     "esperance" to "الترجي التونسي",
     "wydad" to "الوداد الرياضي",
     "raja" to "الرجاء الرياضي",
-
-    "club brugge kv" to "كلوب بروج",
     "club brugge" to "كلوب بروج",
-    "sporting clube de portugal" to "سبورتينغ لشبونة",
     "sporting cp" to "سبورتينغ لشبونة",
+    "sporting clube de portugal" to "سبورتينغ لشبونة",
     "lask" to "لاسك",
-    "galatasaray sk" to "غلطة سراي",
     "galatasaray" to "غلطة سراي",
-    "fenerbahçe sk" to "فنربخشة",
-    "fenerbahçe" to "فنربخشة",
-    "fc shakhtar donetsk" to "شاختار دونيتسك",
+    "fenerbahce" to "فنربخشة",
+    "shakhtar donetsk" to "شاختار دونيتسك",
     "shaktar" to "شاختار دونيتسك",
-    "viking fk" to "فايكنغ",
     "viking" to "فايكنغ",
     "psv eindhoven" to "بي إس في آيندهوفن",
     "psv" to "بي إس في آيندهوفن",
-    "fk bodø/glimt" to "بودو غليمت",
-    "bodø/glimt" to "بودو غليمت",
-    "bodo/glimt" to "بودو غليمت",
-    "fc porto" to "بورتو",
+    "bodo glimt" to "بودو غليمت",
     "porto" to "بورتو",
-    "pae aek" to "أيك أثينا",
     "aek athens" to "أيك أثينا",
-    "sabah fk" to "صباح",
     "sabah" to "صباح",
-    "feyenoord rotterdam" to "فينورد",
     "feyenoord" to "فينورد",
-    "sk slavia praha" to "سلافيا براغ",
     "slavia praha" to "سلافيا براغ",
-    "sl. bratislava" to "سلوفان براتيسلافا",
     "slovan bratislava" to "سلوفان براتيسلافا"
 )
+
+private fun normalizeTeamLookupKey(raw: String): String {
+    var s = raw.trim().lowercase(Locale.ROOT)
+        .replace('أ', 'ا')
+        .replace('إ', 'ا')
+        .replace('آ', 'ا')
+        .replace('ö', 'o')
+        .replace('ü', 'u')
+        .replace('é', 'e')
+        .replace('è', 'e')
+        .replace('á', 'a')
+        .replace('à', 'a')
+        .replace('ñ', 'n')
+        .replace('ç', 'c')
+        .replace('ø', 'o')
+        .replace('’', '\'')
+        .replace('-', ' ')
+        .replace('/', ' ')
+        .replace('.', ' ')
+
+    if (s == "paris fc") return "paris fc"
+
+    val stopWords = setOf(
+        "fc", "cf", "sc", "ac", "afc", "cd", "ud", "sd", "rc",
+        "as", "ss", "us", "sv", "bv", "kv", "fk", "sk", "bc",
+        "club", "de", "del", "la", "las", "los", "al"
+    )
+    val tokens = s.split(Regex("\\s+")).filter { it.isNotBlank() && it !in stopWords }
+    return tokens.joinToString(" ").trim()
+}
 
 private object CrestMemoryCache {
     private val cache = mutableMapOf<String, Bitmap>()
@@ -638,7 +613,11 @@ private fun translateCompetitionName(rawName: String, code: String? = null): Str
 
 private fun translateTeamName(rawTeam: String): String {
     val clean = rawTeam.trim()
-    return TEAM_ARABIC_NAMES[clean.lowercase(Locale.ROOT)] ?: clean
+    if (clean.isBlank()) return clean
+    TEAM_ARABIC_NAMES[clean.lowercase(Locale.ROOT)]?.let { return it }
+    val normalized = normalizeTeamLookupKey(clean)
+    TEAM_ARABIC_NAMES[normalized]?.let { return it }
+    return clean
 }
 
 private fun buildBaghdadDays(): List<DayOption> {
@@ -754,7 +733,7 @@ private suspend fun fetchApiFootballMatchesForLeague(
 
             list.add(
                 LiveMatchItem(
-                    id = "${code}_${leagueId}_${fixture.optInt("id", i)}",
+                    id = "${code}_${leagueId}_${season}_${fixture.optInt("id", i)}",
                     utcIso = dateStr,
                     baghdadDate = bDate,
                     timeText = bTime,
@@ -872,13 +851,10 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
             list
         }
 
-        val seasons = listOf(2026, 2025)
         val extraDeferreds = API_FOOTBALL_LEAGUE_IDS.flatMap { (code, ids) ->
-            ids.flatMap { leagueId ->
-                seasons.map { season ->
-                    async {
-                        fetchApiFootballMatchesForLeague(code, leagueId, season, dateFrom, dateTo)
-                    }
+            ids.map { leagueId ->
+                async {
+                    fetchApiFootballMatchesForLeague(code, leagueId, CURRENT_SEASON, dateFrom, dateTo)
                 }
             }
         }
@@ -936,18 +912,15 @@ private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRo
     return withContext(Dispatchers.IO) {
         val extraIds = API_FOOTBALL_LEAGUE_IDS[leagueCode]
         if (extraIds != null) {
-            val seasons = listOf(2026, 2025, 2024)
             for (leagueId in extraIds) {
-                for (season in seasons) {
-                    val url = "https://v3.football.api-sports.io/standings?league=$leagueId&season=$season"
-                    val body = httpGetJson(url, mapOf("x-apisports-key" to API_FOOTBALL_KEY)) ?: continue
-                    val parsed = parseApiFootballStandingsRows(body)
-                    if (parsed.isNotEmpty()) {
-                        return@withContext parsed
-                    }
+                val url = "https://v3.football.api-sports.io/standings?league=$leagueId&season=$CURRENT_SEASON"
+                val body = httpGetJson(url, mapOf("x-apisports-key" to API_FOOTBALL_KEY)) ?: continue
+                val parsed = parseApiFootballStandingsRows(body)
+                if (parsed.isNotEmpty()) {
+                    return@withContext parsed
                 }
             }
-            return@withContext FALLBACK_STANDINGS_BY_LEAGUE[leagueCode].orEmpty()
+            return@withContext emptyList()
         }
 
         val url = "https://api.football-data.org/v4/competitions/$leagueCode/standings"
@@ -1850,7 +1823,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "الترتيب",
+                    text = "الترتيب ($CURRENT_SEASON)",
                     color = if (subMode == 1) Color.White else TextMuted,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
@@ -2203,7 +2176,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "تعذر تحميل جدول الترتيب حالياً، أعد المحاولة لاحقاً",
+                        text = "لا توجد بيانات ترتيب متاحة للموسم الحالي ($CURRENT_SEASON) لهذه البطولة حالياً",
                         color = TextMuted,
                         fontSize = 13.sp,
                         textAlign = TextAlign.Center
