@@ -109,6 +109,7 @@ data class LiveMatchItem(
     val homeCrestUrl: String? = null,
     val awayCrestUrl: String? = null,
     val league: String,
+    val leagueLogoUrl: String? = null,
     val status: MatchFeedStatus,
     val minute: String? = null,
     val homeScore: Int? = null,
@@ -170,7 +171,7 @@ private val STANDING_LEAGUES = listOf(
 private val SOCIAL_ACCOUNTS = listOf(
     SocialAccountItem(
         id = "tiktok",
-        title = "TikTok (@ali.kazem70)",
+        title = "TikTok",
         url = "https://www.tiktok.com/@ali.kazem70",
         logoAssetName = "tiktok",
         fallbackGlyph = "♪",
@@ -179,13 +180,23 @@ private val SOCIAL_ACCOUNTS = listOf(
     ),
     SocialAccountItem(
         id = "telegram",
-        title = "Telegram (@Alikazem200)",
+        title = "Telegram",
         url = "https://t.me/Alikazem200",
         logoAssetName = "telegram",
         fallbackGlyph = "✈",
         badgeBg = Color(0xFF1D9BF0),
         badgeTextColor = Color.White
     )
+)
+
+private val MODERN_LEAGUE_LOGOS: Map<String, String> = mapOf(
+    "PL" to "https://crests.football-data.org/PL.png",
+    "PD" to "https://crests.football-data.org/PD.png",
+    "SA" to "https://crests.football-data.org/SA.png",
+    "BL1" to "https://crests.football-data.org/BL1.png",
+    "FL1" to "https://crests.football-data.org/FL1.png",
+    "CL" to "https://crests.football-data.org/CL.png",
+    "ELC" to "https://crests.football-data.org/ELC.png"
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
@@ -398,7 +409,7 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "le havre ac" to "لو هافر",
     "le havre" to "لو هافر",
 
-    // أندية أوروبية أخرى
+    // أندية أوروبية أخرى ودوري الأبطال
     "club brugge kv" to "كلوب بروج",
     "club brugge" to "كلوب بروج",
     "sporting clube de portugal" to "سبورتينغ لشبونة",
@@ -409,7 +420,26 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "fenerbahçe sk" to "فنربخشة",
     "fenerbahçe" to "فنربخشة",
     "fc shakhtar donetsk" to "شاختار دونيتسك",
-    "shaktar" to "شاختار دونيتسك"
+    "shaktar" to "شاختار دونيتسك",
+    "viking fk" to "فايكنغ",
+    "viking" to "فايكنغ",
+    "psv eindhoven" to "بي إس في آيندهوفن",
+    "psv" to "بي إس في آيندهوفن",
+    "fk bodø/glimt" to "بودو غليمت",
+    "bodø/glimt" to "بودو غليمت",
+    "bodo/glimt" to "بودو غليمت",
+    "fc porto" to "بورتو",
+    "porto" to "بورتو",
+    "pae aek" to "أيك أثينا",
+    "aek athens" to "أيك أثينا",
+    "sabah fk" to "صباح",
+    "sabah" to "صباح",
+    "feyenoord rotterdam" to "فينورد",
+    "feyenoord" to "فينورد",
+    "sk slavia praha" to "سلافيا براغ",
+    "slavia praha" to "سلافيا براغ",
+    "sl. bratislava" to "سلوفان براتيسلافا",
+    "slovan bratislava" to "سلوفان براتيسلافا"
 )
 
 private object CrestMemoryCache {
@@ -420,7 +450,7 @@ private object CrestMemoryCache {
 
     @Synchronized
     fun put(url: String, bitmap: Bitmap) {
-        if (cache.size > 180) {
+        if (cache.size > 220) {
             cache.clear()
         }
         cache[url] = bitmap
@@ -471,6 +501,12 @@ private fun isBrazilianCompetition(text: String): Boolean {
         "برازيل"
     )
     return blockedKeywords.any { normalized.contains(it) }
+}
+
+private fun resolveModernLeagueLogo(compObj: JSONObject?, code: String?): String? {
+    val apiEmblem = compObj?.optString("emblem")?.takeIf { it.isNotBlank() && it != "null" }
+    val cleanCode = code?.trim()?.uppercase(Locale.ROOT)
+    return MODERN_LEAGUE_LOGOS[cleanCode] ?: apiEmblem
 }
 
 private fun translateCompetitionName(rawName: String, code: String? = null): String {
@@ -633,6 +669,7 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
                     homeCrestUrl = homeCrest,
                     awayCrestUrl = awayCrest,
                     league = translateCompetitionName(compNameRaw, compCode),
+                    leagueLogoUrl = resolveModernLeagueLogo(compObj, compCode),
                     status = status,
                     minute = minuteVal,
                     homeScore = homeScore,
@@ -1057,6 +1094,7 @@ class MainActivity : ComponentActivity() {
                 homeTeam = "ريال مدريد",
                 awayTeam = "برشلونة",
                 league = "الدوري الإسباني",
+                leagueLogoUrl = MODERN_LEAGUE_LOGOS["PD"],
                 status = MatchFeedStatus.SCHEDULED
             ),
             LiveMatchItem(
@@ -1067,6 +1105,7 @@ class MainActivity : ComponentActivity() {
                 homeTeam = "مانشستر سيتي",
                 awayTeam = "آرسنال",
                 league = "الدوري الإنجليزي الممتاز",
+                leagueLogoUrl = MODERN_LEAGUE_LOGOS["PL"],
                 status = MatchFeedStatus.SCHEDULED
             )
         )
@@ -1563,15 +1602,25 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(
-                                    text = "🏆 ${match.league}",
-                                    color = ActiveGreen,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     modifier = Modifier.weight(1f)
-                                )
+                                ) {
+                                    RemoteCrestBadge(
+                                        crestUrl = match.leagueLogoUrl,
+                                        fallbackLabel = match.league,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = match.league,
+                                        color = ActiveGreen,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
 
                                 Text(
                                     text = statusBadge.label,
@@ -1660,7 +1709,9 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
             ) {
                 STANDING_LEAGUES.forEach { league ->
                     val selected = league.code == selectedLeague.code
-                    Box(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (selected) ActiveGreen else PanelBg)
@@ -1668,6 +1719,11 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                             .clickable { selectedLeague = league }
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
+                        RemoteCrestBadge(
+                            crestUrl = MODERN_LEAGUE_LOGOS[league.code],
+                            fallbackLabel = league.shortLabel,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Text(
                             text = league.shortLabel,
                             color = if (selected) Color.White else TextMuted,
@@ -2227,7 +2283,7 @@ private fun AccountsTabView(accounts: List<SocialAccountItem>) {
                         Text(
                             text = acc.title,
                             color = TextWhite,
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
