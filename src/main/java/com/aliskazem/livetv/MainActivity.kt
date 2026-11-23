@@ -78,12 +78,10 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private const val FOOTBALL_DATA_API_KEY = "b11ae4a8257e485a83389f1ef51b8df8"
-private val API_FOOTBALL_KEYS = listOf(
-    "cff0d26710ee2ab9ac363f5c81cf74b1",
+private val REGIONAL_API_FOOTBALL_KEYS = listOf(
     "34b4b3a4b2ca1509fbc1a4fc3915298"
 )
 private const val CURRENT_SEASON = 2026
-private val FALLBACK_SEASONS = listOf(2026, 2025, 2024)
 
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
@@ -195,24 +193,20 @@ private val STANDING_LEAGUES = listOf(
     LeagueOption("SA", "الدوري الإيطالي"),
     LeagueOption("BL1", "الدوري الألماني"),
     LeagueOption("FL1", "الدوري الفرنسي"),
-    LeagueOption("CL", "دوري الأبطال"),
-    LeagueOption("SAU", "الدوري السعودي"),
-    LeagueOption("IRQ", "الدوري العراقي"),
-    LeagueOption("ACL", "دوري أبطال آسيا"),
-    LeagueOption("CAFCL", "دوري أبطال أفريقيا")
+    LeagueOption("CL", "دوري الأبطال")
 )
 
 private val LEAGUE_ORDER_PRIORITY: Map<String, Int> = mapOf(
-    "IRQ" to 1,
-    "SAU" to 2,
-    "ACL" to 3,
-    "CAFCL" to 4,
-    "CL" to 5,
-    "PL" to 6,
-    "PD" to 7,
-    "SA" to 8,
-    "BL1" to 9,
-    "FL1" to 10
+    "CL" to 1,
+    "PL" to 2,
+    "PD" to 3,
+    "SA" to 4,
+    "BL1" to 5,
+    "FL1" to 6,
+    "IRQ" to 7,
+    "SAU" to 8,
+    "ACL" to 9,
+    "CAFCL" to 10
 )
 
 private val LEAGUE_LOGO_URLS: Map<String, String> = mapOf(
@@ -228,9 +222,9 @@ private val LEAGUE_LOGO_URLS: Map<String, String> = mapOf(
     "CAFCL" to "https://media.api-sports.io/football/leagues/12.png"
 )
 
-private val API_FOOTBALL_LEAGUE_IDS: Map<String, List<Int>> = mapOf(
-    "SAU" to listOf(307),
+private val REGIONAL_API_FOOTBALL_LEAGUE_IDS: Map<String, List<Int>> = mapOf(
     "IRQ" to listOf(542, 748),
+    "SAU" to listOf(307),
     "ACL" to listOf(17, 946),
     "CAFCL" to listOf(12)
 )
@@ -377,7 +371,11 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "1 union berlin" to "يونيون برلين",
     "union berlin" to "يونيون برلين",
     "borussia monchengladbach" to "بوروسيا مونشنغلادباخ",
+    "borussia mönchengladbach" to "بوروسيا مونشنغلادباخ",
+    "monchengladbach" to "بوروسيا مونشنغلادباخ",
+    "mönchengladbach" to "بوروسيا مونشنغلادباخ",
     "m gladbach" to "بوروسيا مونشنغلادباخ",
+    "gladbach" to "بوروسيا مونشنغلادباخ",
     "elversberg" to "إلفرسبيرغ",
     "koln 1" to "كولن",
     "koln" to "كولن",
@@ -434,33 +432,11 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "al fateh" to "الفتح",
     "ettifaq" to "الاتفاق",
     "al ettifaq" to "الاتفاق",
-    "khaleej" to "الخليج",
-    "al khaleej" to "الخليج",
-    "raed" to "الرائد",
-    "al raed" to "الرائد",
-    "damac" to "ضمك",
-    "fayha" to "الفيحاء",
-    "al fayha" to "الفيحاء",
-    "okhdood" to "الأخدود",
-    "al okhdood" to "الأخدود",
-    "kholood" to "الخلود",
-    "al kholood" to "الخلود",
-    "riyadh" to "الرياض",
-    "al riyadh" to "الرياض",
-    "neom" to "نيوم",
-    "abha" to "أبها",
-    "hazem" to "الحزم",
-    "al hazem" to "الحزم",
-    "faisaly" to "الفيصلي",
-    "al faisaly" to "الفيصلي",
-    "diriyah" to "الدرعية",
-    "al diriyah" to "الدرعية",
 
     "shorta" to "الشرطة",
     "al shorta" to "الشرطة",
     "quwa al jawiya" to "القوة الجوية",
     "al quwa al jawiya" to "القوة الجوية",
-    "air force" to "القوة الجوية",
     "zawra a" to "الزوراء",
     "zawraa" to "الزوراء",
     "al zawraa" to "الزوراء",
@@ -468,63 +444,21 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "al talaba" to "الطلبة",
     "zakho" to "زاخو",
     "naft" to "النفط",
-    "naft maysan" to "نفط ميسان",
-    "naft al basra" to "نفط البصرة",
     "duhok" to "دهوك",
     "erbil" to "أربيل",
     "najaf" to "النجف",
     "al najaf" to "النجف",
     "karbala" to "كربلاء",
     "karma" to "الكرمة",
-    "diwaniya" to "الديوانية",
-    "amanat baghdad" to "أمانة بغداد",
-    "masafi" to "المصافي",
-    "hudood" to "الحدود",
-    "minaa" to "الميناء",
-    "al minaa" to "الميناء",
 
     "ahly" to "الأهلي المصري",
     "al ahly" to "الأهلي المصري",
     "zamalek" to "الزمالك",
     "al zamalek" to "الزمالك",
     "mamelodi sundowns" to "ماميلودي صن داونز",
-    "sundowns" to "ماميلودي صن داونز",
     "esperance" to "الترجي التونسي",
     "wydad" to "الوداد الرياضي",
     "raja" to "الرجاء الرياضي",
-    "pyramids" to "بيراميدز",
-    "belouizdad" to "شباب بلوزداد",
-    "cr belouizdad" to "شباب بلوزداد",
-    "mc alger" to "مولودية الجزائر",
-    "simba" to "سيمبا التنزاني",
-    "young africans" to "يانغ أفريكانز",
-    "sadd" to "السد القطري",
-    "al sadd" to "السد القطري",
-    "duhail" to "الدحيل القطري",
-    "al duhail" to "الدحيل القطري",
-    "rayyan" to "الريان القطري",
-    "al rayyan" to "الريان القطري",
-    "ain" to "العين الإماراتي",
-    "al ain" to "العين الإماراتي",
-    "wasl" to "الوصل الإماراتي",
-    "al wasl" to "الوصل الإماراتي",
-    "sharjah" to "الشارقة الإماراتي",
-    "shabab al ahli" to "شباب الأهلي دبي",
-    "persepolis" to "بيرسبوليس الإيراني",
-    "esteghlal" to "استقلال طهران",
-    "sepahan" to "سباهان أصفهان",
-    "nasaf" to "نسف قرشي",
-    "pakhtakor" to "باختاكور",
-    "yokohama f marinos" to "يوكوهاما مارينوس",
-    "kobe" to "فيسيل كوبي",
-    "vissel kobe" to "فيسيل كوبي",
-    "ulsan" to "أولسان هيونداي",
-    "ulsan hd" to "أولسان هيونداي",
-    "jeonbuk" to "جونبك هيونداي",
-    "gwangju" to "غوانغجو",
-    "shandong taishan" to "شاندونغ تايشان",
-    "buriram united" to "بوريرام يونايتد",
-    "lion city sailors" to "ليون سيتي سيلرز",
     "club brugge" to "كلوب بروج",
     "sporting cp" to "سبورتينغ لشبونة",
     "sporting clube de portugal" to "سبورتينغ لشبونة",
@@ -545,7 +479,9 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "feyenoord" to "فينورد",
     "slavia praha" to "سلافيا براغ",
     "slovan bratislava" to "سلوفان براتيسلافا",
-    "sl bratislava" to "سلوفان براتيسلافا"
+    "sk slovan bratislava" to "سلوفان براتيسلافا",
+    "sl bratislava" to "سلوفان براتيسلافا",
+    "bratislava" to "سلوفان براتيسلافا"
 )
 
 private fun normalizeTeamLookupKey(raw: String): String {
@@ -806,8 +742,8 @@ private fun httpGetJson(urlString: String, headers: Map<String, String> = emptyM
     }
 }
 
-private suspend fun httpGetWithApiFootballKeys(endpointPathWithQuery: String): String? {
-    for (apiKey in API_FOOTBALL_KEYS) {
+private suspend fun httpGetWithRegionalApiFootballKeys(endpointPathWithQuery: String): String? {
+    for (apiKey in REGIONAL_API_FOOTBALL_KEYS) {
         val url = "https://v3.football.api-sports.io/$endpointPathWithQuery"
         val body = httpGetJson(url, mapOf("x-apisports-key" to apiKey))
         if (!body.isNullOrBlank()) {
@@ -836,82 +772,77 @@ private fun parseFootballDataStatus(statusRaw: String): MatchFeedStatus {
     }
 }
 
-private suspend fun fetchApiFootballMatchesForLeague(
+private suspend fun fetchRegionalMatchesForLeague(
     code: String,
     leagueId: Int,
     dateFrom: String,
     dateTo: String
 ): List<LiveMatchItem> {
     return withContext(Dispatchers.IO) {
-        for (season in FALLBACK_SEASONS) {
-            val body = httpGetWithApiFootballKeys(
-                "fixtures?league=$leagueId&season=$season&from=$dateFrom&to=$dateTo&timezone=Asia/Baghdad"
-            ) ?: continue
+        val body = httpGetWithRegionalApiFootballKeys(
+            "fixtures?league=$leagueId&season=$CURRENT_SEASON&from=$dateFrom&to=$dateTo&timezone=Asia/Baghdad"
+        ) ?: return@withContext emptyList()
 
-            val list = mutableListOf<LiveMatchItem>()
-            val root = JSONObject(body)
-            val respArr = root.optJSONArray("response") ?: JSONArray()
-            val baghdadZone = ZoneId.of("Asia/Baghdad")
-            val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
-            val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
+        val list = mutableListOf<LiveMatchItem>()
+        val root = JSONObject(body)
+        val respArr = root.optJSONArray("response") ?: JSONArray()
+        val baghdadZone = ZoneId.of("Asia/Baghdad")
+        val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
+        val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
 
-            for (i in 0 until respArr.length()) {
-                val item = respArr.optJSONObject(i) ?: continue
-                val fixture = item.optJSONObject("fixture") ?: continue
-                val teams = item.optJSONObject("teams") ?: continue
-                val goals = item.optJSONObject("goals")
-                val statusObj = fixture.optJSONObject("status")
+        for (i in 0 until respArr.length()) {
+            val item = respArr.optJSONObject(i) ?: continue
+            val fixture = item.optJSONObject("fixture") ?: continue
+            val teams = item.optJSONObject("teams") ?: continue
+            val goals = item.optJSONObject("goals")
+            val statusObj = fixture.optJSONObject("status")
 
-                val dateStr = fixture.optString("date", "")
-                if (dateStr.isBlank()) continue
-                val instant = try {
-                    Instant.parse(dateStr)
-                } catch (_: Exception) {
-                    continue
-                }
+            val dateStr = fixture.optString("date", "")
+            if (dateStr.isBlank()) continue
+            val instant = try {
+                Instant.parse(dateStr)
+            } catch (_: Exception) {
+                continue
+            }
 
-                val zdt = instant.atZone(baghdadZone)
-                val bDate = zdt.toLocalDate().format(dateFmt)
-                val bTime = zdt.toLocalTime().format(timeFmt)
+            val zdt = instant.atZone(baghdadZone)
+            val bDate = zdt.toLocalDate().format(dateFmt)
+            val bTime = zdt.toLocalTime().format(timeFmt)
 
-                val homeObj = teams.optJSONObject("home")
-                val awayObj = teams.optJSONObject("away")
-                val homeName = translateTeamName(homeObj?.optString("name", "الفريق الأول") ?: "الفريق الأول")
-                val awayName = translateTeamName(awayObj?.optString("name", "الفريق الثاني") ?: "الفريق الثاني")
-                val homeCrest = homeObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
-                val awayCrest = awayObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
+            val homeObj = teams.optJSONObject("home")
+            val awayObj = teams.optJSONObject("away")
+            val homeName = translateTeamName(homeObj?.optString("name", "الفريق الأول") ?: "الفريق الأول")
+            val awayName = translateTeamName(awayObj?.optString("name", "الفريق الثاني") ?: "الفريق الثاني")
+            val homeCrest = homeObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
+            val awayCrest = awayObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
 
-                val shortStatus = statusObj?.optString("short", "NS") ?: "NS"
-                val status = parseFootballDataStatus(shortStatus)
-                val elapsed = statusObj?.opt("elapsed")?.takeIf { it != JSONObject.NULL }?.toString()
-                val homeScore = goals?.opt("home")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
-                val awayScore = goals?.opt("away")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+            val shortStatus = statusObj?.optString("short", "NS") ?: "NS"
+            val status = parseFootballDataStatus(shortStatus)
+            val elapsed = statusObj?.opt("elapsed")?.takeIf { it != JSONObject.NULL }?.toString()
+            val homeScore = goals?.opt("home")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+            val awayScore = goals?.opt("away")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
 
-                list.add(
-                    LiveMatchItem(
-                        id = "${code}_${leagueId}_${season}_${fixture.optInt("id", i)}",
-                        utcIso = dateStr,
-                        baghdadDate = bDate,
-                        timeText = bTime,
-                        homeTeam = homeName,
-                        awayTeam = awayName,
-                        homeCrestUrl = homeCrest,
-                        awayCrestUrl = awayCrest,
-                        league = translateCompetitionName("", code),
-                        leagueCode = code,
-                        leagueLogoUrl = LEAGUE_LOGO_URLS[code],
-                        status = status,
-                        minute = elapsed,
-                        homeScore = homeScore,
-                        awayScore = awayScore
-                    )
+            list.add(
+                LiveMatchItem(
+                    id = "${code}_${leagueId}_${CURRENT_SEASON}_${fixture.optInt("id", i)}",
+                    utcIso = dateStr,
+                    baghdadDate = bDate,
+                    timeText = bTime,
+                    homeTeam = homeName,
+                    awayTeam = awayName,
+                    homeCrestUrl = homeCrest,
+                    awayCrestUrl = awayCrest,
+                    league = translateCompetitionName("", code),
+                    leagueCode = code,
+                    leagueLogoUrl = LEAGUE_LOGO_URLS[code],
+                    status = status,
+                    minute = elapsed,
+                    homeScore = homeScore,
+                    awayScore = awayScore
                 )
-            }
-            if (list.isNotEmpty()) {
-                return@withContext list
-            }
+            )
         }
-        emptyList()
+        list
     }
 }
 
@@ -946,7 +877,9 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
                 }
 
                 val resolvedCode = detectLeagueCode(compNameRaw, compCode)
-                if (resolvedCode == null) continue
+                if (resolvedCode == null || resolvedCode in setOf("IRQ", "SAU", "ACL", "CAFCL")) {
+                    continue
+                }
 
                 val utcDateStr = item.optString("utcDate", "")
                 if (utcDateStr.isBlank()) continue
@@ -964,13 +897,13 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
                 val homeObj = item.optJSONObject("homeTeam")
                 val awayObj = item.optJSONObject("awayTeam")
                 val homeName = translateTeamName(
-                    homeObj?.optString("shortName")?.takeIf { it.isNotBlank() }
-                        ?: homeObj?.optString("name", "الفريق الأول")
+                    homeObj?.optString("name")?.takeIf { it.isNotBlank() }
+                        ?: homeObj?.optString("shortName", "الفريق الأول")
                         ?: "الفريق الأول"
                 )
                 val awayName = translateTeamName(
-                    awayObj?.optString("shortName")?.takeIf { it.isNotBlank() }
-                        ?: awayObj?.optString("name", "الفريق الثاني")
+                    awayObj?.optString("name")?.takeIf { it.isNotBlank() }
+                        ?: awayObj?.optString("shortName", "الفريق الثاني")
                         ?: "الفريق الثاني"
                 )
                 val homeCrest = homeObj?.optString("crest")?.takeIf {
@@ -1011,17 +944,17 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
             list
         }
 
-        val extraDeferreds = API_FOOTBALL_LEAGUE_IDS.flatMap { (code, ids) ->
+        val regionalDeferreds = REGIONAL_API_FOOTBALL_LEAGUE_IDS.flatMap { (code, ids) ->
             ids.map { leagueId ->
                 async {
-                    fetchApiFootballMatchesForLeague(code, leagueId, dateFrom, dateTo)
+                    fetchRegionalMatchesForLeague(code, leagueId, dateFrom, dateTo)
                 }
             }
         }
 
         val combined = mutableListOf<LiveMatchItem>()
         combined.addAll(fdDeferred.await())
-        extraDeferreds.awaitAll().forEach { combined.addAll(it) }
+        regionalDeferreds.awaitAll().forEach { combined.addAll(it) }
 
         combined
             .distinctBy { "${it.baghdadDate}_${it.leagueCode}_${it.homeTeam}_${it.awayTeam}" }
@@ -1029,61 +962,14 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
     }
 }
 
-private fun parseApiFootballStandingsRows(body: String): List<StandingRowItem> {
-    val root = JSONObject(body)
-    val respArr = root.optJSONArray("response") ?: JSONArray()
-    val leagueObj = respArr.optJSONObject(0)?.optJSONObject("league")
-    val standingsGroups = leagueObj?.optJSONArray("standings") ?: JSONArray()
-
-    val rows = mutableListOf<StandingRowItem>()
-    for (g in 0 until standingsGroups.length()) {
-        val tableArr = standingsGroups.optJSONArray(g) ?: continue
-        for (i in 0 until tableArr.length()) {
-            val row = tableArr.optJSONObject(i) ?: continue
-            val teamObj = row.optJSONObject("team")
-            val allObj = row.optJSONObject("all")
-            val teamName = translateTeamName(teamObj?.optString("name", "") ?: "")
-            if (teamName.isBlank()) continue
-            val crest = teamObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
-
-            rows.add(
-                StandingRowItem(
-                    position = row.optInt("rank", rows.size + 1),
-                    teamName = teamName,
-                    crestUrl = crest,
-                    played = allObj?.optInt("played", 0) ?: 0,
-                    won = allObj?.optInt("win", 0) ?: 0,
-                    draw = allObj?.optInt("draw", 0) ?: 0,
-                    lost = allObj?.optInt("lose", 0) ?: 0,
-                    goalDiff = row.optInt("goalsDiff", 0),
-                    points = row.optInt("points", 0)
-                )
-            )
-        }
-        if (rows.isNotEmpty()) break
-    }
-    return rows
-}
-
 private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRowItem> {
-    if (isExcludedCompetition(leagueCode, leagueCode)) {
+    if (
+        isExcludedCompetition(leagueCode, leagueCode) ||
+        leagueCode in setOf("IRQ", "SAU", "ACL", "CAFCL")
+    ) {
         return emptyList()
     }
     return withContext(Dispatchers.IO) {
-        val extraIds = API_FOOTBALL_LEAGUE_IDS[leagueCode]
-        if (extraIds != null) {
-            for (leagueId in extraIds) {
-                for (season in FALLBACK_SEASONS) {
-                    val body = httpGetWithApiFootballKeys("standings?league=$leagueId&season=$season") ?: continue
-                    val parsed = parseApiFootballStandingsRows(body)
-                    if (parsed.isNotEmpty()) {
-                        return@withContext parsed
-                    }
-                }
-            }
-            return@withContext emptyList()
-        }
-
         val url = "https://api.football-data.org/v4/competitions/$leagueCode/standings"
         val body = httpGetJson(url, mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY)) ?: return@withContext emptyList()
 
@@ -1104,8 +990,8 @@ private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRo
             val row = tableArr.optJSONObject(i) ?: continue
             val teamObj = row.optJSONObject("team")
             val teamName = translateTeamName(
-                teamObj?.optString("shortName")?.takeIf { it.isNotBlank() }
-                    ?: teamObj?.optString("name", "")
+                teamObj?.optString("name")?.takeIf { it.isNotBlank() }
+                    ?: teamObj?.optString("shortName", "")
                     ?: ""
             )
             if (teamName.isBlank()) continue
@@ -1506,30 +1392,6 @@ class MainActivity : ComponentActivity() {
 
         val fallbackMatches = listOf(
             LiveMatchItem(
-                id = "m1",
-                utcIso = "2026-11-23T18:00:00Z",
-                baghdadDate = todayStr,
-                timeText = "21:00",
-                homeTeam = "الشرطة",
-                awayTeam = "الزوراء",
-                league = "الدوري العراقي",
-                leagueCode = "IRQ",
-                leagueLogoUrl = LEAGUE_LOGO_URLS["IRQ"],
-                status = MatchFeedStatus.SCHEDULED
-            ),
-            LiveMatchItem(
-                id = "m2",
-                utcIso = "2026-11-23T19:00:00Z",
-                baghdadDate = todayStr,
-                timeText = "22:00",
-                homeTeam = "الهلال",
-                awayTeam = "النصر",
-                league = "الدوري السعودي",
-                leagueCode = "SAU",
-                leagueLogoUrl = LEAGUE_LOGO_URLS["SAU"],
-                status = MatchFeedStatus.SCHEDULED
-            ),
-            LiveMatchItem(
                 id = "m3",
                 utcIso = "2026-11-23T20:00:00Z",
                 baghdadDate = todayStr,
@@ -1795,22 +1657,6 @@ private fun LeagueFallbackMark(
                             color = Color(0xFF00E676),
                             style = Stroke(width = r * 0.15f, cap = StrokeCap.Round, join = StrokeJoin.Round)
                         )
-                    }
-                    "SAU" -> {
-                        drawCircle(color = Color(0xFF064E3B), radius = r * 0.94f)
-                        drawCircle(color = Color(0xFF34D399), radius = r * 0.42f)
-                    }
-                    "IRQ" -> {
-                        drawCircle(color = Color(0xFF14532D), radius = r * 0.94f)
-                        drawCircle(color = Color(0xFFFACC15), radius = r * 0.38f)
-                    }
-                    "ACL" -> {
-                        drawCircle(color = Color(0xFF1E3A8A), radius = r * 0.94f)
-                        drawCircle(color = Color(0xFF60A5FA), radius = r * 0.45f, style = Stroke(width = r * 0.14f))
-                    }
-                    "CAFCL" -> {
-                        drawCircle(color = Color(0xFF7F1D1D), radius = r * 0.94f)
-                        drawCircle(color = Color(0xFFFBBF24), radius = r * 0.42f)
                     }
                     else -> {
                         drawCircle(color = ActiveGreen, radius = r * 0.72f)
@@ -2235,7 +2081,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                                 color = TextWhite,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp,
-                                                maxLines = 1,
+                                                maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis
                                             )
                                         }
@@ -2264,7 +2110,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp,
                                                 textAlign = TextAlign.End,
-                                                maxLines = 1,
+                                                maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.weight(1f)
                                             )
