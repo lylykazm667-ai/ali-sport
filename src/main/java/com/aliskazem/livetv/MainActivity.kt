@@ -251,6 +251,7 @@ private val SOCIAL_ACCOUNTS = listOf(
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
+    // Premier League
     "arsenal" to "آرسنال",
     "brighton hove albion" to "برايتون",
     "brighton hove" to "برايتون",
@@ -260,6 +261,7 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "liverpool" to "ليفربول",
     "bournemouth" to "بورنموث",
     "leeds united" to "ليدز يونايتد",
+    "leeds" to "ليدز يونايتد",
     "everton" to "إيفرتون",
     "chelsea" to "تشيلسي",
     "tottenham hotspur" to "توتنهام",
@@ -284,65 +286,89 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "leicester city" to "ليستر سيتي",
     "southampton" to "ساوثهامبتون",
     "west ham united" to "وست هام",
+    "west ham" to "وست هام",
     "wolverhampton wanderers" to "وولفرهامبتون",
+    "wolves" to "وولفرهامبتون",
 
+    // La Liga
     "barcelona" to "برشلونة",
     "barca" to "برشلونة",
     "real madrid" to "ريال مدريد",
     "atletico madrid" to "أتلتيكو مدريد",
     "atleti" to "أتلتيكو مدريد",
+    "real betis balompie" to "ريال بيتيس",
     "real betis" to "ريال بيتيس",
+    "betis" to "ريال بيتيس",
+    "real sociedad de futbol" to "ريال سوسيداد",
     "real sociedad" to "ريال سوسيداد",
+    "sociedad" to "ريال سوسيداد",
     "sevilla" to "إشبيلية",
-    "athletic" to "أتلتيك بيلباو",
     "athletic bilbao" to "أتلتيك بيلباو",
+    "athletic" to "أتلتيك بيلباو",
     "deportivo alaves" to "ديبورتيفو ألافيس",
     "alaves" to "ديبورتيفو ألافيس",
     "villarreal" to "فياريال",
     "espanyol" to "إسبانيول",
+    "rcd espanyol" to "إسبانيول",
     "osasuna" to "أوساسونا",
-    "celta" to "سيلتا فيغو",
+    "ca osasuna" to "أوساسونا",
     "celta vigo" to "سيلتا فيغو",
+    "celta" to "سيلتا فيغو",
     "rayo vallecano" to "رايو فاليكانو",
+    "rayo" to "رايو فاليكانو",
     "valencia" to "فالنسيا",
     "getafe" to "خيتافي",
     "levante" to "ليفانتي",
     "elche" to "إلتشي",
-    "santander" to "راسينغ سانتاندير",
+    "real racing club" to "راسينغ سانتاندير",
     "racing santander" to "راسينغ سانتاندير",
-    "deportivo" to "ديبورتيفو لاكورونيا",
+    "santander" to "راسينغ سانتاندير",
     "deportivo la coruna" to "ديبورتيفو لاكورونيا",
+    "deportivo" to "ديبورتيفو لاكورونيا",
     "malaga" to "ملقا",
     "girona" to "جيرونا",
     "mallorca" to "مايوركا",
 
+    // Serie A
     "lazio" to "لاتسيو",
+    "ss lazio" to "لاتسيو",
     "roma" to "روما",
+    "as roma" to "روما",
     "internazionale milano" to "إنتر ميلان",
     "inter milan" to "إنتر ميلان",
     "inter" to "إنتر ميلان",
     "milan" to "ميلان",
     "ac milan" to "ميلان",
-    "como" to "كومو",
     "como 1907" to "كومو",
+    "como" to "كومو",
     "juventus" to "يوفنتوس",
+    "ssc napoli" to "نابولي",
     "napoli" to "نابولي",
+    "bologna 1909" to "بولونيا",
     "bologna" to "بولونيا",
+    "genoa cfc" to "جنوى",
     "genoa" to "جنوى",
+    "cagliari calcio" to "كالياري",
     "cagliari" to "كالياري",
     "atalanta" to "أتالانتا",
     "torino" to "تورينو",
     "lecce" to "ليتشي",
+    "acf fiorentina" to "فيورنتينا",
     "fiorentina" to "فيورنتينا",
+    "parma calcio 1913" to "بارما",
     "parma" to "بارما",
+    "sassuolo calcio" to "ساسولو",
     "sassuolo" to "ساسولو",
     "monza" to "مونزا",
+    "udinese calcio" to "أودينيزي",
     "udinese" to "أودينيزي",
+    "frosinone calcio" to "فروسينوني",
     "frosinone" to "فروسينوني",
     "venezia" to "فينيزيا",
-    "verona" to "هيلاس فيرونا",
     "hellas verona" to "هيلاس فيرونا",
+    "verona" to "هيلاس فيرونا",
 
+    // Bundesliga
     "borussia dortmund" to "بوروسيا دورتموند",
     "dortmund" to "بوروسيا دورتموند",
     "bayern munchen" to "بايرن ميونخ",
@@ -363,57 +389,65 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "augsburg" to "أوغسبورغ",
     "tsg 1899 hoffenheim" to "هوفنهايم",
     "hoffenheim" to "هوفنهايم",
-    "hamburger" to "هامبورغ",
     "hamburger sv" to "هامبورغ",
+    "hamburger" to "هامبورغ",
     "hsv" to "هامبورغ",
     "1 fsv mainz 05" to "ماينتس",
     "mainz" to "ماينتس",
     "1 union berlin" to "يونيون برلين",
     "union berlin" to "يونيون برلين",
     "borussia monchengladbach" to "بوروسيا مونشنغلادباخ",
-    "borussia mönchengladbach" to "بوروسيا مونشنغلادباخ",
     "monchengladbach" to "بوروسيا مونشنغلادباخ",
-    "mönchengladbach" to "بوروسيا مونشنغلادباخ",
     "m gladbach" to "بوروسيا مونشنغلادباخ",
     "gladbach" to "بوروسيا مونشنغلادباخ",
     "elversberg" to "إلفرسبيرغ",
-    "koln 1" to "كولن",
+    "1 fc koln" to "كولن",
     "koln" to "كولن",
-    "1 koln" to "كولن",
     "paderborn" to "بادربورن",
     "sc paderborn" to "بادربورن",
-    "schalke" to "شالكه",
     "schalke 04" to "شالكه",
+    "schalke" to "شالكه",
 
+    // Ligue 1
     "paris saint germain" to "باريس سان جيرمان",
     "psg" to "باريس سان جيرمان",
-    "paris" to "باريس سان جيرمان",
     "paris fc" to "باريس إف سي",
+    "lille osc" to "ليل",
     "lille" to "ليل",
     "olympique lyonnais" to "أولمبيك ليون",
     "olympique lyon" to "أولمبيك ليون",
     "lyon" to "أولمبيك ليون",
     "olympique marseille" to "مارسيليا",
     "marseille" to "مارسيليا",
-    "brest" to "بريست",
     "stade brestois 29" to "بريست",
+    "brest" to "بريست",
+    "ogc nice" to "نيس",
     "nice" to "نيس",
+    "as monaco" to "موناكو",
     "monaco" to "موناكو",
-    "rennes" to "رين",
+    "stade rennais fc 1901" to "رين",
     "stade rennais" to "رين",
+    "rennes" to "رين",
     "lorient" to "لوريان",
+    "racing club de lens" to "لانس",
+    "rc lens" to "لانس",
     "lens" to "لانس",
     "toulouse" to "تولوز",
+    "aj auxerre" to "أوكسير",
     "auxerre" to "أوكسير",
+    "rc strasbourg alsace" to "ستراسبورغ",
     "strasbourg" to "ستراسبورغ",
-    "angers" to "أنجيه",
     "angers sco" to "أنجيه",
+    "angers" to "أنجيه",
+    "le havre ac" to "لو هافر",
     "le havre" to "لو هافر",
+    "le mans fc" to "لومان",
     "le mans" to "لومان",
+    "es troyes ac" to "تروا",
     "troyes" to "تروا",
 
+    // Regional & Champions League
     "hilal" to "الهلال",
-    "hilal saudi" to "الهلال",
     "al hilal" to "الهلال",
     "nassr" to "النصر",
     "al nassr" to "النصر",
@@ -421,44 +455,19 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "al ittihad" to "الاتحاد",
     "ahli" to "الأهلي السعودي",
     "al ahli" to "الأهلي السعودي",
-    "ahli jeddah" to "الأهلي السعودي",
-    "shabab" to "الشباب السعودي",
-    "al shabab" to "الشباب السعودي",
-    "qadisiyah" to "القادسية",
-    "al qadisiyah" to "القادسية",
-    "taawoun" to "التعاون",
-    "al taawoun" to "التعاون",
-    "fateh" to "الفتح",
-    "al fateh" to "الفتح",
-    "ettifaq" to "الاتفاق",
-    "al ettifaq" to "الاتفاق",
-
     "shorta" to "الشرطة",
     "al shorta" to "الشرطة",
     "quwa al jawiya" to "القوة الجوية",
-    "al quwa al jawiya" to "القوة الجوية",
-    "zawra a" to "الزوراء",
     "zawraa" to "الزوراء",
     "al zawraa" to "الزوراء",
     "talaba" to "الطلبة",
-    "al talaba" to "الطلبة",
     "zakho" to "زاخو",
     "naft" to "النفط",
     "duhok" to "دهوك",
     "erbil" to "أربيل",
     "najaf" to "النجف",
-    "al najaf" to "النجف",
     "karbala" to "كربلاء",
     "karma" to "الكرمة",
-
-    "ahly" to "الأهلي المصري",
-    "al ahly" to "الأهلي المصري",
-    "zamalek" to "الزمالك",
-    "al zamalek" to "الزمالك",
-    "mamelodi sundowns" to "ماميلودي صن داونز",
-    "esperance" to "الترجي التونسي",
-    "wydad" to "الوداد الرياضي",
-    "raja" to "الرجاء الرياضي",
     "club brugge" to "كلوب بروج",
     "sporting cp" to "سبورتينغ لشبونة",
     "sporting clube de portugal" to "سبورتينغ لشبونة",
@@ -466,48 +475,48 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "galatasaray" to "غلطة سراي",
     "fenerbahce" to "فنربخشة",
     "shakhtar donetsk" to "شاختار دونيتسك",
-    "shaktar" to "شاختار دونيتسك",
     "viking" to "فايكنغ",
     "psv eindhoven" to "بي إس في آيندهوفن",
     "psv" to "بي إس في آيندهوفن",
     "bodo glimt" to "بودو غليمت",
     "porto" to "بورتو",
     "aek athens" to "أيك أثينا",
-    "pae aek" to "أيك أثينا",
     "aek" to "أيك أثينا",
     "sabah" to "صباح",
     "feyenoord" to "فينورد",
     "slavia praha" to "سلافيا براغ",
     "slovan bratislava" to "سلوفان براتيسلافا",
     "sk slovan bratislava" to "سلوفان براتيسلافا",
-    "sl bratislava" to "سلوفان براتيسلافا",
     "bratislava" to "سلوفان براتيسلافا"
 )
 
+private fun foldSpecialLatinChars(raw: String): String {
+    return raw.lowercase(Locale.ROOT)
+        .replace('á', 'a').replace('à', 'a').replace('â', 'a').replace('ä', 'a').replace('ã', 'a').replace('å', 'a')
+        .replace('é', 'e').replace('è', 'e').replace('ê', 'e').replace('ë', 'e')
+        .replace('í', 'i').replace('ì', 'i').replace('î', 'i').replace('ï', 'i')
+        .replace('ó', 'o').replace('ò', 'o').replace('ô', 'o').replace('ö', 'o').replace('õ', 'o').replace('ø', 'o')
+        .replace('ú', 'u').replace('ù', 'u').replace('û', 'u').replace('ü', 'u')
+        .replace('ñ', 'n').replace('ç', 'c').replace('ý', 'y').replace('ÿ', 'y')
+        .replace('ß', 's')
+        .replace('’', '\'')
+}
+
 private fun normalizeTeamLookupKey(raw: String): String {
-    val s = raw.trim().lowercase(Locale.ROOT)
+    val s = foldSpecialLatinChars(raw)
         .replace('أ', 'ا')
         .replace('إ', 'ا')
         .replace('آ', 'ا')
-        .replace('ö', 'o')
-        .replace('ü', 'u')
-        .replace('é', 'e')
-        .replace('è', 'e')
-        .replace('á', 'a')
-        .replace('à', 'a')
-        .replace('ñ', 'n')
-        .replace('ç', 'c')
-        .replace('ø', 'o')
-        .replace('’', '\'')
         .replace('-', ' ')
         .replace('/', ' ')
         .replace('.', ' ')
+        .replace('&', ' ')
 
-    if (s == "paris fc") return "paris fc"
+    if (s.trim() == "paris fc") return "paris fc"
 
     val stopWords = setOf(
-        "fc", "cf", "sc", "ac", "afc", "cd", "ud", "sd", "rc",
-        "as", "ss", "us", "sv", "bv", "kv", "fk", "sk", "bc", "pae", "sl",
+        "fc", "cf", "sc", "ac", "afc", "cd", "ud", "sd", "rc", "osc", "ogc",
+        "as", "ss", "us", "sv", "bv", "kv", "fk", "sk", "bc", "pae", "sl", "ca", "rcd", "ssc", "acf",
         "club", "de", "del", "la", "las", "los", "al"
     )
     val tokens = s.split(Regex("\\s+")).filter { it.isNotBlank() && it !in stopWords }
@@ -515,13 +524,13 @@ private fun normalizeTeamLookupKey(raw: String): String {
 }
 
 private fun transliterateToArabic(raw: String): String {
-    val cleaned = raw.trim()
-        .replace(Regex("\\b(FC|CF|SC|AC|AFC|CD|UD|SD|RC|AS|SS|US|SV|BV|KV|FK|SK|BC|PAE|SL)\\b", RegexOption.IGNORE_CASE), "")
+    val cleaned = foldSpecialLatinChars(raw)
+        .replace(Regex("\\b(FC|CF|SC|AC|AFC|CD|UD|SD|RC|OSC|OGC|AS|SS|US|SV|BV|KV|FK|SK|BC|PAE|SL|CA|RCD|SSC|ACF)\\b", RegexOption.IGNORE_CASE), "")
         .replace(Regex("\\s+"), " ")
         .trim()
     if (cleaned.isBlank()) return "فريق"
 
-    val lower = cleaned.lowercase(Locale.ROOT)
+    val lower = cleaned
         .replace("sh", "ش")
         .replace("ch", "تش")
         .replace("th", "ث")
@@ -615,15 +624,13 @@ private fun isExcludedCompetition(text: String, code: String? = null): Boolean {
     val cleanCode = code?.trim()?.uppercase(Locale.ROOT)
     if (cleanCode == "ELC" || cleanCode == "BSA") return true
 
-    val normalized = text.lowercase(Locale.ROOT).trim()
+    val normalized = foldSpecialLatinChars(text).trim()
     val blockedKeywords = listOf(
         "brazil",
         "brazilian",
         "brasileirao",
-        "brasileirão",
         "campeonato brasileiro",
         "serie a brazil",
-        "série a brazil",
         "الدوري البرازيلي",
         "البرازيلي",
         "برازيل",
@@ -642,7 +649,7 @@ private fun detectLeagueCode(rawName: String, code: String? = null): String? {
     if (!cleanCode.isNullOrBlank() && LEAGUE_LOGO_URLS.containsKey(cleanCode)) {
         return cleanCode
     }
-    val lower = rawName.lowercase(Locale.ROOT)
+    val lower = foldSpecialLatinChars(rawName)
     return when {
         lower.contains("premier league") || rawName.contains("الإنجليزي") -> "PL"
         lower.contains("la liga") || lower.contains("primera") || rawName.contains("الإسباني") -> "PD"
@@ -661,7 +668,7 @@ private fun detectLeagueCode(rawName: String, code: String? = null): String? {
 private fun translateCompetitionName(rawName: String, code: String? = null): String {
     val resolvedCode = detectLeagueCode(rawName, code)
     val clean = rawName.trim()
-    val lower = clean.lowercase(Locale.ROOT)
+    val lower = foldSpecialLatinChars(clean)
     return when (resolvedCode) {
         "PL" -> "الدوري الإنجليزي الممتاز"
         "PD" -> "الدوري الإسباني"
@@ -683,7 +690,8 @@ private fun translateCompetitionName(rawName: String, code: String? = null): Str
 private fun translateTeamName(rawTeam: String): String {
     val clean = rawTeam.trim()
     if (clean.isBlank()) return "فريق"
-    TEAM_ARABIC_NAMES[clean.lowercase(Locale.ROOT)]?.let { return it }
+    val folded = foldSpecialLatinChars(clean)
+    TEAM_ARABIC_NAMES[folded]?.let { return it }
     val normalized = normalizeTeamLookupKey(clean)
     TEAM_ARABIC_NAMES[normalized]?.let { return it }
     val hasArabic = clean.any { it in '\u0600'..'\u06FF' }
@@ -1649,8 +1657,8 @@ private fun LeagueFallbackMark(
                         drawCircle(color = Color(0xFF071C24), radius = r * 0.94f)
                         val wave = Path().apply {
                             moveTo(cx - r * 0.46f, cy + r * 0.05f)
-                            quadraticBezierTo(cx - r * 0.15f, cy - r * 0.36f, cx, cy)
-                            quadraticBezierTo(cx + r * 0.15f, cy + r * 0.36f, cx + r * 0.46f, cy - r * 0.05f)
+                            quadraticTo(cx - r * 0.15f, cy - r * 0.36f, cx, cy)
+                            quadraticTo(cx + r * 0.15f, cy + r * 0.36f, cx + r * 0.46f, cy - r * 0.05f)
                         }
                         drawPath(
                             path = wave,
