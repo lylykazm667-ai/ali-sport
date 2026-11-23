@@ -158,6 +158,7 @@ private val ActiveGreen = Color(0xFF10B981)
 private val LiveRed = Color(0xFFEF4444)
 private val TextWhite = Color(0xFFF3F6F4)
 private val TextMuted = Color(0xFF8FA398)
+private val LightBadgeBg = Color(0xFFF3F6F4)
 
 private val STANDING_LEAGUES = listOf(
     LeagueOption("PL", "الدوري الإنجليزي الممتاز"),
@@ -190,13 +191,13 @@ private val SOCIAL_ACCOUNTS = listOf(
 )
 
 private val MODERN_LEAGUE_LOGOS: Map<String, String> = mapOf(
-    "PL" to "https://crests.football-data.org/PL.png",
-    "PD" to "https://crests.football-data.org/PD.png",
-    "SA" to "https://crests.football-data.org/SA.png",
-    "BL1" to "https://crests.football-data.org/BL1.png",
-    "FL1" to "https://crests.football-data.org/FL1.png",
-    "CL" to "https://crests.football-data.org/CL.png",
-    "ELC" to "https://crests.football-data.org/ELC.png"
+    "PL" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/47.png",
+    "PD" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/87.png",
+    "SA" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/55.png",
+    "BL1" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/54.png",
+    "FL1" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/53.png",
+    "CL" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/42.png",
+    "ELC" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/48.png"
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
@@ -466,8 +467,8 @@ private suspend fun fetchBitmapFromUrl(urlString: String): Bitmap? {
             val url = URL(urlString)
             conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
-                connectTimeout = 8000
-                readTimeout = 8000
+                connectTimeout = 9000
+                readTimeout = 9000
             }
             if (conn.responseCode in 200..299) {
                 val bmp = conn.inputStream.use { BitmapFactory.decodeStream(it) }
@@ -504,8 +505,10 @@ private fun isBrazilianCompetition(text: String): Boolean {
 }
 
 private fun resolveModernLeagueLogo(compObj: JSONObject?, code: String?): String? {
-    val apiEmblem = compObj?.optString("emblem")?.takeIf { it.isNotBlank() && it != "null" }
     val cleanCode = code?.trim()?.uppercase(Locale.ROOT)
+    val apiEmblem = compObj?.optString("emblem")?.takeIf {
+        it.isNotBlank() && it != "null" && !it.endsWith(".svg", ignoreCase = true)
+    }
     return MODERN_LEAGUE_LOGOS[cleanCode] ?: apiEmblem
 }
 
@@ -647,8 +650,12 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
                     ?: awayObj?.optString("name", "الفريق الثاني")
                     ?: "الفريق الثاني"
             )
-            val homeCrest = homeObj?.optString("crest")?.takeIf { it.isNotBlank() && it != "null" }
-            val awayCrest = awayObj?.optString("crest")?.takeIf { it.isNotBlank() && it != "null" }
+            val homeCrest = homeObj?.optString("crest")?.takeIf {
+                it.isNotBlank() && it != "null" && !it.endsWith(".svg", ignoreCase = true)
+            }
+            val awayCrest = awayObj?.optString("crest")?.takeIf {
+                it.isNotBlank() && it != "null" && !it.endsWith(".svg", ignoreCase = true)
+            }
 
             val scoreObj = item.optJSONObject("score")
             val fullTimeObj = scoreObj?.optJSONObject("fullTime")
@@ -712,7 +719,9 @@ private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRo
                     ?: ""
             )
             if (teamName.isBlank()) continue
-            val crest = teamObj?.optString("crest")?.takeIf { it.isNotBlank() && it != "null" }
+            val crest = teamObj?.optString("crest")?.takeIf {
+                it.isNotBlank() && it != "null" && !it.endsWith(".svg", ignoreCase = true)
+            }
 
             rows.add(
                 StandingRowItem(
@@ -1136,7 +1145,6 @@ fun AliKazemSportApp(
     fallbackMatches: List<LiveMatchItem>,
     accounts: List<SocialAccountItem>
 ) {
-    // 0: حساباتي | 1: جدول المباريات والترتيب | 2: قنوات البث
     var selectedTab by remember { mutableIntStateOf(1) }
     var isArabic by remember { mutableStateOf(true) }
     var activeCategory by remember { mutableStateOf<CategoryItem?>(null) }
@@ -1164,7 +1172,6 @@ fun AliKazemSportApp(
                 )
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // البطاقة العلوية: زر اللغة + العنوان + الشعار الدائري
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1233,7 +1240,6 @@ fun AliKazemSportApp(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // شريط التبويب الثلاثي
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1302,7 +1308,8 @@ fun AliKazemSportApp(
 private fun RemoteCrestBadge(
     crestUrl: String?,
     fallbackLabel: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lightBackground: Boolean = false
 ) {
     var bitmap by remember(crestUrl) {
         mutableStateOf(crestUrl?.let { CrestMemoryCache.get(it) })
@@ -1314,11 +1321,13 @@ private fun RemoteCrestBadge(
         }
     }
 
+    val containerBg = if (lightBackground) LightBadgeBg else TileInnerBg
+
     Box(
         modifier = modifier
             .size(22.dp)
             .clip(CircleShape)
-            .background(TileInnerBg)
+            .background(containerBg)
             .border(1.dp, BorderGreen, CircleShape),
         contentAlignment = Alignment.Center
     ) {
@@ -1330,12 +1339,12 @@ private fun RemoteCrestBadge(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(2.dp)
+                    .padding(3.dp)
             )
         } else {
             Text(
                 text = fallbackLabel.take(2),
-                color = ActiveGreen,
+                color = if (lightBackground) ScreenBg else ActiveGreen,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
@@ -1349,7 +1358,6 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
     val scope = rememberCoroutineScope()
     val dayOptions = remember { buildBaghdadDays() }
 
-    // 0: جدول المباريات | 1: الترتيب
     var subMode by remember { mutableIntStateOf(0) }
     var selectedDayKey by remember { mutableStateOf(dayOptions.first().key) }
     var matches by remember { mutableStateOf<List<LiveMatchItem>>(emptyList()) }
@@ -1610,7 +1618,8 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                     RemoteCrestBadge(
                                         crestUrl = match.leagueLogoUrl,
                                         fallbackLabel = match.league,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(20.dp),
+                                        lightBackground = true
                                     )
                                     Text(
                                         text = match.league,
@@ -1722,7 +1731,8 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                         RemoteCrestBadge(
                             crestUrl = MODERN_LEAGUE_LOGOS[league.code],
                             fallbackLabel = league.shortLabel,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp),
+                            lightBackground = true
                         )
                         Text(
                             text = league.shortLabel,
