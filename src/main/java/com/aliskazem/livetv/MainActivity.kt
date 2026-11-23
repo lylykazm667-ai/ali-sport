@@ -201,16 +201,6 @@ private val SOCIAL_ACCOUNTS = listOf(
     )
 )
 
-private val MODERN_LEAGUE_LOGOS: Map<String, String> = mapOf(
-    "PL" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/47.png",
-    "PD" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/87.png",
-    "SA" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/55.png",
-    "BL1" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/54.png",
-    "FL1" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/53.png",
-    "CL" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/42.png",
-    "ELC" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/48.png"
-)
-
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "arsenal fc" to "آرسنال",
     "arsenal" to "آرسنال",
@@ -512,7 +502,7 @@ private fun isBrazilianCompetition(text: String): Boolean {
 
 private fun detectLeagueCode(rawName: String, code: String? = null): String? {
     val cleanCode = code?.trim()?.uppercase(Locale.ROOT)
-    if (!cleanCode.isNullOrBlank() && MODERN_LEAGUE_LOGOS.containsKey(cleanCode)) {
+    if (!cleanCode.isNullOrBlank()) {
         return cleanCode
     }
     val lower = rawName.lowercase(Locale.ROOT)
@@ -523,13 +513,8 @@ private fun detectLeagueCode(rawName: String, code: String? = null): String? {
         lower.contains("bundesliga") || rawName.contains("الألماني") -> "BL1"
         lower.contains("ligue 1") || rawName.contains("الفرنسي") -> "FL1"
         lower.contains("champions") || rawName.contains("الأبطال") -> "CL"
-        else -> cleanCode?.takeIf { it.isNotBlank() }
+        else -> null
     }
-}
-
-private fun resolveModernLeagueLogo(compObj: JSONObject?, code: String?): String? {
-    val cleanCode = code?.trim()?.uppercase(Locale.ROOT)
-    return MODERN_LEAGUE_LOGOS[cleanCode]
 }
 
 private fun translateCompetitionName(rawName: String, code: String? = null): String {
@@ -701,7 +686,7 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
                     awayCrestUrl = awayCrest,
                     league = translateCompetitionName(compNameRaw, resolvedCode),
                     leagueCode = resolvedCode,
-                    leagueLogoUrl = resolveModernLeagueLogo(compObj, resolvedCode),
+                    leagueLogoUrl = null,
                     status = status,
                     minute = minuteVal,
                     homeScore = homeScore,
@@ -1129,7 +1114,6 @@ class MainActivity : ComponentActivity() {
                 awayTeam = "برشلونة",
                 league = "الدوري الإسباني",
                 leagueCode = "PD",
-                leagueLogoUrl = MODERN_LEAGUE_LOGOS["PD"],
                 status = MatchFeedStatus.SCHEDULED
             ),
             LiveMatchItem(
@@ -1141,7 +1125,6 @@ class MainActivity : ComponentActivity() {
                 awayTeam = "آرسنال",
                 league = "الدوري الإنجليزي الممتاز",
                 leagueCode = "PL",
-                leagueLogoUrl = MODERN_LEAGUE_LOGOS["PL"],
                 status = MatchFeedStatus.SCHEDULED
             )
         )
@@ -1334,14 +1317,17 @@ fun AliKazemSportApp(
 @Composable
 private fun ModernLeagueArtwork(
     leagueCode: String?,
+    fallbackLabel: String = "",
     modifier: Modifier = Modifier
 ) {
     val code = leagueCode?.trim()?.uppercase(Locale.ROOT)
+        ?: detectLeagueCode(fallbackLabel, null)
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(3.dp)) {
+        Canvas(modifier = Modifier.fillMaxSize().padding(2.dp)) {
             val w = size.width
             val h = size.height
             val cx = w / 2f
@@ -1350,34 +1336,32 @@ private fun ModernLeagueArtwork(
 
             when (code) {
                 "PL" -> {
-                    // هوية الدوري الإنجليزي الحديثة (بنفسجي حديث مع تاج/أسد مبسط)
-                    drawCircle(color = Color(0xFF3D195B), radius = r * 0.92f)
+                    drawCircle(color = Color(0xFF3D195B), radius = r * 0.94f)
                     val crownPath = Path().apply {
-                        moveTo(cx - r * 0.45f, cy + r * 0.25f)
-                        lineTo(cx - r * 0.48f, cy - r * 0.22f)
-                        lineTo(cx - r * 0.16f, cy + r * 0.02f)
-                        lineTo(cx, cy - r * 0.35f)
-                        lineTo(cx + r * 0.16f, cy + r * 0.02f)
-                        lineTo(cx + r * 0.48f, cy - r * 0.22f)
-                        lineTo(cx + r * 0.45f, cy + r * 0.25f)
+                        moveTo(cx - r * 0.46f, cy + r * 0.25f)
+                        lineTo(cx - r * 0.50f, cy - r * 0.24f)
+                        lineTo(cx - r * 0.17f, cy + r * 0.02f)
+                        lineTo(cx, cy - r * 0.38f)
+                        lineTo(cx + r * 0.17f, cy + r * 0.02f)
+                        lineTo(cx + r * 0.50f, cy - r * 0.24f)
+                        lineTo(cx + r * 0.46f, cy + r * 0.25f)
                         close()
                     }
                     drawPath(path = crownPath, color = Color(0xFF00FF85))
                 }
                 "CL" -> {
-                    // هوية دوري أبطال أوروبا الحديثة (كرة أزرق/سماوي بنجوم)
                     drawCircle(
                         brush = Brush.linearGradient(
                             colors = listOf(Color(0xFF0A2E8A), Color(0xFF1A73E8))
                         ),
-                        radius = r * 0.92f
+                        radius = r * 0.94f
                     )
                     drawCircle(
                         color = Color(0xFF7DD3FC),
                         radius = r * 0.62f,
-                        style = Stroke(width = r * 0.11f)
+                        style = Stroke(width = r * 0.12f)
                     )
-                    val starR = r * 0.28f
+                    val starR = r * 0.30f
                     val starPath = Path()
                     for (i in 0 until 10) {
                         val rad = if (i % 2 == 0) starR else starR * 0.45f
@@ -1390,17 +1374,16 @@ private fun ModernLeagueArtwork(
                     drawPath(path = starPath, color = Color.White)
                 }
                 "FL1" -> {
-                    // هوية الدوري الفرنسي الحديثة (أخضر حديث وموجة زرقاء)
-                    drawCircle(color = Color(0xFF071C24), radius = r * 0.92f)
+                    drawCircle(color = Color(0xFF071C24), radius = r * 0.94f)
                     drawCircle(
                         color = Color(0xFF00E676),
                         radius = r * 0.72f,
                         style = Stroke(width = r * 0.12f)
                     )
                     val wave = Path().apply {
-                        moveTo(cx - r * 0.45f, cy + r * 0.05f)
-                        quadraticBezierTo(cx - r * 0.15f, cy - r * 0.35f, cx, cy)
-                        quadraticBezierTo(cx + r * 0.15f, cy + r * 0.35f, cx + r * 0.45f, cy - r * 0.05f)
+                        moveTo(cx - r * 0.46f, cy + r * 0.05f)
+                        quadraticBezierTo(cx - r * 0.15f, cy - r * 0.36f, cx, cy)
+                        quadraticBezierTo(cx + r * 0.15f, cy + r * 0.36f, cx + r * 0.46f, cy - r * 0.05f)
                     }
                     drawPath(
                         path = wave,
@@ -1409,8 +1392,7 @@ private fun ModernLeagueArtwork(
                     )
                 }
                 "PD" -> {
-                    // هوية الدوري الإسباني الحديثة
-                    drawCircle(color = Color(0xFF14181F), radius = r * 0.92f)
+                    drawCircle(color = Color(0xFF14181F), radius = r * 0.94f)
                     drawArc(
                         color = Color(0xFFFF4B4B),
                         startAngle = -35f,
@@ -1422,8 +1404,7 @@ private fun ModernLeagueArtwork(
                     )
                 }
                 "SA" -> {
-                    // هوية الدوري الإيطالي الحديثة
-                    drawCircle(color = Color(0xFF0B2C5D), radius = r * 0.92f)
+                    drawCircle(color = Color(0xFF0B2C5D), radius = r * 0.94f)
                     drawCircle(
                         color = Color(0xFF38BDF8),
                         radius = r * 0.56f,
@@ -1431,12 +1412,11 @@ private fun ModernLeagueArtwork(
                     )
                 }
                 "BL1" -> {
-                    // هوية الدوري الألماني الحديثة
-                    drawCircle(color = Color(0xFFD3010C), radius = r * 0.92f)
-                    drawCircle(color = Color.White, radius = r * 0.24f)
+                    drawCircle(color = Color(0xFFD3010C), radius = r * 0.94f)
+                    drawCircle(color = Color.White, radius = r * 0.25f)
                 }
                 else -> {
-                    drawCircle(color = ActiveGreen, radius = r * 0.65f)
+                    drawCircle(color = ActiveGreen, radius = r * 0.72f)
                 }
             }
         }
@@ -1451,12 +1431,15 @@ private fun RemoteCrestBadge(
     lightBackground: Boolean = false,
     leagueCode: String? = null
 ) {
-    var bitmap by remember(crestUrl) {
-        mutableStateOf(crestUrl?.let { CrestMemoryCache.get(it) })
+    val resolvedLeague = leagueCode ?: detectLeagueCode(fallbackLabel, null)
+    var bitmap by remember(crestUrl, resolvedLeague) {
+        mutableStateOf(
+            if (resolvedLeague != null) null else crestUrl?.let { CrestMemoryCache.get(it) }
+        )
     }
 
-    LaunchedEffect(crestUrl) {
-        if (bitmap == null && !crestUrl.isNullOrBlank()) {
+    LaunchedEffect(crestUrl, resolvedLeague) {
+        if (resolvedLeague == null && bitmap == null && !crestUrl.isNullOrBlank()) {
             bitmap = fetchBitmapFromUrl(crestUrl)
         }
     }
@@ -1471,26 +1454,31 @@ private fun RemoteCrestBadge(
             .border(1.dp, BorderGreen, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        val loaded = bitmap
-        if (loaded != null) {
-            Image(
-                bitmap = loaded.asImageBitmap(),
-                contentDescription = fallbackLabel,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(3.dp)
+        if (resolvedLeague != null) {
+            ModernLeagueArtwork(
+                leagueCode = resolvedLeague,
+                fallbackLabel = fallbackLabel
             )
-        } else if (leagueCode != null) {
-            ModernLeagueArtwork(leagueCode = leagueCode)
         } else {
-            Text(
-                text = fallbackLabel.take(2),
-                color = if (lightBackground) ScreenBg else ActiveGreen,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1
-            )
+            val loaded = bitmap
+            if (loaded != null) {
+                Image(
+                    bitmap = loaded.asImageBitmap(),
+                    contentDescription = fallbackLabel,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(3.dp)
+                )
+            } else {
+                Text(
+                    text = fallbackLabel.take(2),
+                    color = if (lightBackground) ScreenBg else ActiveGreen,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
@@ -1872,7 +1860,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         RemoteCrestBadge(
-                            crestUrl = MODERN_LEAGUE_LOGOS[league.code],
+                            crestUrl = null,
                             fallbackLabel = league.shortLabel,
                             modifier = Modifier.size(18.dp),
                             lightBackground = true,
@@ -2508,3 +2496,4 @@ private fun ChannelOrCategoryArtwork(
         }
     }
 }
+
