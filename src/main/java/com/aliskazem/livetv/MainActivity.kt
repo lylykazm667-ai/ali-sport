@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,9 +31,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -66,6 +73,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 private const val FOOTBALL_DATA_API_KEY = "b11ae4a8257e485a83389f1ef51b8df8"
 private const val API_FOOTBALL_KEY = "cff0d26710ee2ab9ac363f5c81cf74b1"
@@ -109,6 +119,7 @@ data class LiveMatchItem(
     val homeCrestUrl: String? = null,
     val awayCrestUrl: String? = null,
     val league: String,
+    val leagueCode: String? = null,
     val leagueLogoUrl: String? = null,
     val status: MatchFeedStatus,
     val minute: String? = null,
@@ -201,7 +212,6 @@ private val MODERN_LEAGUE_LOGOS: Map<String, String> = mapOf(
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
-    // الإنجليزي الممتاز والفرق الإنجليزية
     "arsenal fc" to "آرسنال",
     "arsenal" to "آرسنال",
     "brighton & hove albion fc" to "برايتون",
@@ -246,7 +256,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "crystal palace fc" to "كريستال بالاس",
     "crystal palace" to "كريستال بالاس",
 
-    // الإسباني
     "fc barcelona" to "برشلونة",
     "barcelona" to "برشلونة",
     "barça" to "برشلونة",
@@ -292,7 +301,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "málaga" to "ملقا",
     "malaga" to "ملقا",
 
-    // الإيطالي
     "ss lazio" to "لاتسيو",
     "lazio" to "لاتسيو",
     "as roma" to "روما",
@@ -335,7 +343,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "venezia fc" to "فينيزيا",
     "venezia" to "فينيزيا",
 
-    // الألماني
     "borussia dortmund" to "بوروسيا دورتموند",
     "dortmund" to "بوروسيا دورتموند",
     "fc bayern münchen" to "بايرن ميونخ",
@@ -374,7 +381,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "borussia mönchengladbach" to "بوروسيا مونشنغلادباخ",
     "m'gladbach" to "بوروسيا مونشنغلادباخ",
 
-    // الفرنسي
     "paris saint-germain fc" to "باريس سان جيرمان",
     "paris saint-germain" to "باريس سان جيرمان",
     "psg" to "باريس سان جيرمان",
@@ -410,7 +416,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "le havre ac" to "لو هافر",
     "le havre" to "لو هافر",
 
-    // أندية أوروبية أخرى ودوري الأبطال
     "club brugge kv" to "كلوب بروج",
     "club brugge" to "كلوب بروج",
     "sporting clube de portugal" to "سبورتينغ لشبونة",
@@ -469,6 +474,7 @@ private suspend fun fetchBitmapFromUrl(urlString: String): Bitmap? {
                 requestMethod = "GET"
                 connectTimeout = 9000
                 readTimeout = 9000
+                setRequestProperty("User-Agent", "Mozilla/5.0")
             }
             if (conn.responseCode in 200..299) {
                 val bmp = conn.inputStream.use { BitmapFactory.decodeStream(it) }
@@ -504,28 +510,45 @@ private fun isBrazilianCompetition(text: String): Boolean {
     return blockedKeywords.any { normalized.contains(it) }
 }
 
+private fun detectLeagueCode(rawName: String, code: String? = null): String? {
+    val cleanCode = code?.trim()?.uppercase(Locale.ROOT)
+    if (!cleanCode.isNullOrBlank() && MODERN_LEAGUE_LOGOS.containsKey(cleanCode)) {
+        return cleanCode
+    }
+    val lower = rawName.lowercase(Locale.ROOT)
+    return when {
+        lower.contains("premier league") || rawName.contains("الإنجليزي") -> "PL"
+        lower.contains("la liga") || lower.contains("primera") || rawName.contains("الإسباني") -> "PD"
+        lower.contains("serie a") || rawName.contains("الإيطالي") -> "SA"
+        lower.contains("bundesliga") || rawName.contains("الألماني") -> "BL1"
+        lower.contains("ligue 1") || rawName.contains("الفرنسي") -> "FL1"
+        lower.contains("champions") || rawName.contains("الأبطال") -> "CL"
+        else -> cleanCode?.takeIf { it.isNotBlank() }
+    }
+}
+
 private fun resolveModernLeagueLogo(compObj: JSONObject?, code: String?): String? {
     val cleanCode = code?.trim()?.uppercase(Locale.ROOT)
-    val apiEmblem = compObj?.optString("emblem")?.takeIf {
-        it.isNotBlank() && it != "null" && !it.endsWith(".svg", ignoreCase = true)
-    }
-    return MODERN_LEAGUE_LOGOS[cleanCode] ?: apiEmblem
+    return MODERN_LEAGUE_LOGOS[cleanCode]
 }
 
 private fun translateCompetitionName(rawName: String, code: String? = null): String {
+    val resolvedCode = detectLeagueCode(rawName, code)
     val clean = rawName.trim()
     val lower = clean.lowercase(Locale.ROOT)
-    return when {
-        code == "PL" || lower.contains("premier league") -> "الدوري الإنجليزي الممتاز"
-        code == "PD" || lower.contains("la liga") || lower.contains("primera division") -> "الدوري الإسباني"
-        code == "SA" || lower.contains("serie a") -> "الدوري الإيطالي"
-        code == "BL1" || lower.contains("bundesliga") -> "الدوري الألماني"
-        code == "FL1" || lower.contains("ligue 1") -> "الدوري الفرنسي"
-        code == "CL" || lower.contains("champions league") -> "دوري أبطال أوروبا"
-        code == "ELC" || lower.contains("championship") -> "دوري البطولة الإنجليزية"
-        lower.contains("egypt") || clean.contains("المصري") -> "الدوري المصري"
-        lower.contains("iraq") || clean.contains("العراقي") -> "الدوري العراقي"
-        else -> clean.ifBlank { "بطولة رياضية" }
+    return when (resolvedCode) {
+        "PL" -> "الدوري الإنجليزي الممتاز"
+        "PD" -> "الدوري الإسباني"
+        "SA" -> "الدوري الإيطالي"
+        "BL1" -> "الدوري الألماني"
+        "FL1" -> "الدوري الفرنسي"
+        "CL" -> "دوري أبطال أوروبا"
+        "ELC" -> "دوري البطولة الإنجليزية"
+        else -> when {
+            lower.contains("egypt") || clean.contains("المصري") -> "الدوري المصري"
+            lower.contains("iraq") || clean.contains("العراقي") -> "الدوري العراقي"
+            else -> clean.ifBlank { "بطولة رياضية" }
+        }
     }
 }
 
@@ -664,6 +687,7 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
 
             val status = parseFootballDataStatus(item.optString("status", "SCHEDULED"))
             val minuteVal = item.opt("minute")?.takeIf { it != JSONObject.NULL }?.toString()?.takeIf { it.isNotBlank() }
+            val resolvedCode = detectLeagueCode(compNameRaw, compCode)
 
             result.add(
                 LiveMatchItem(
@@ -675,8 +699,9 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
                     awayTeam = awayName,
                     homeCrestUrl = homeCrest,
                     awayCrestUrl = awayCrest,
-                    league = translateCompetitionName(compNameRaw, compCode),
-                    leagueLogoUrl = resolveModernLeagueLogo(compObj, compCode),
+                    league = translateCompetitionName(compNameRaw, resolvedCode),
+                    leagueCode = resolvedCode,
+                    leagueLogoUrl = resolveModernLeagueLogo(compObj, resolvedCode),
                     status = status,
                     minute = minuteVal,
                     homeScore = homeScore,
@@ -1103,6 +1128,7 @@ class MainActivity : ComponentActivity() {
                 homeTeam = "ريال مدريد",
                 awayTeam = "برشلونة",
                 league = "الدوري الإسباني",
+                leagueCode = "PD",
                 leagueLogoUrl = MODERN_LEAGUE_LOGOS["PD"],
                 status = MatchFeedStatus.SCHEDULED
             ),
@@ -1114,6 +1140,7 @@ class MainActivity : ComponentActivity() {
                 homeTeam = "مانشستر سيتي",
                 awayTeam = "آرسنال",
                 league = "الدوري الإنجليزي الممتاز",
+                leagueCode = "PL",
                 leagueLogoUrl = MODERN_LEAGUE_LOGOS["PL"],
                 status = MatchFeedStatus.SCHEDULED
             )
@@ -1305,11 +1332,124 @@ fun AliKazemSportApp(
 }
 
 @Composable
+private fun ModernLeagueArtwork(
+    leagueCode: String?,
+    modifier: Modifier = Modifier
+) {
+    val code = leagueCode?.trim()?.uppercase(Locale.ROOT)
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize().padding(3.dp)) {
+            val w = size.width
+            val h = size.height
+            val cx = w / 2f
+            val cy = h / 2f
+            val r = minOf(w, h) / 2f
+
+            when (code) {
+                "PL" -> {
+                    // هوية الدوري الإنجليزي الحديثة (بنفسجي حديث مع تاج/أسد مبسط)
+                    drawCircle(color = Color(0xFF3D195B), radius = r * 0.92f)
+                    val crownPath = Path().apply {
+                        moveTo(cx - r * 0.45f, cy + r * 0.25f)
+                        lineTo(cx - r * 0.48f, cy - r * 0.22f)
+                        lineTo(cx - r * 0.16f, cy + r * 0.02f)
+                        lineTo(cx, cy - r * 0.35f)
+                        lineTo(cx + r * 0.16f, cy + r * 0.02f)
+                        lineTo(cx + r * 0.48f, cy - r * 0.22f)
+                        lineTo(cx + r * 0.45f, cy + r * 0.25f)
+                        close()
+                    }
+                    drawPath(path = crownPath, color = Color(0xFF00FF85))
+                }
+                "CL" -> {
+                    // هوية دوري أبطال أوروبا الحديثة (كرة أزرق/سماوي بنجوم)
+                    drawCircle(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFF0A2E8A), Color(0xFF1A73E8))
+                        ),
+                        radius = r * 0.92f
+                    )
+                    drawCircle(
+                        color = Color(0xFF7DD3FC),
+                        radius = r * 0.62f,
+                        style = Stroke(width = r * 0.11f)
+                    )
+                    val starR = r * 0.28f
+                    val starPath = Path()
+                    for (i in 0 until 10) {
+                        val rad = if (i % 2 == 0) starR else starR * 0.45f
+                        val angle = (i * 36.0 - 90.0) * PI / 180.0
+                        val px = cx + (rad * cos(angle)).toFloat()
+                        val py = cy + (rad * sin(angle)).toFloat()
+                        if (i == 0) starPath.moveTo(px, py) else starPath.lineTo(px, py)
+                    }
+                    starPath.close()
+                    drawPath(path = starPath, color = Color.White)
+                }
+                "FL1" -> {
+                    // هوية الدوري الفرنسي الحديثة (أخضر حديث وموجة زرقاء)
+                    drawCircle(color = Color(0xFF071C24), radius = r * 0.92f)
+                    drawCircle(
+                        color = Color(0xFF00E676),
+                        radius = r * 0.72f,
+                        style = Stroke(width = r * 0.12f)
+                    )
+                    val wave = Path().apply {
+                        moveTo(cx - r * 0.45f, cy + r * 0.05f)
+                        quadraticBezierTo(cx - r * 0.15f, cy - r * 0.35f, cx, cy)
+                        quadraticBezierTo(cx + r * 0.15f, cy + r * 0.35f, cx + r * 0.45f, cy - r * 0.05f)
+                    }
+                    drawPath(
+                        path = wave,
+                        color = Color(0xFF38BDF8),
+                        style = Stroke(width = r * 0.14f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    )
+                }
+                "PD" -> {
+                    // هوية الدوري الإسباني الحديثة
+                    drawCircle(color = Color(0xFF14181F), radius = r * 0.92f)
+                    drawArc(
+                        color = Color(0xFFFF4B4B),
+                        startAngle = -35f,
+                        sweepAngle = 250f,
+                        useCenter = false,
+                        topLeft = Offset(cx - r * 0.65f, cy - r * 0.65f),
+                        size = Size(r * 1.3f, r * 1.3f),
+                        style = Stroke(width = r * 0.18f, cap = StrokeCap.Round)
+                    )
+                }
+                "SA" -> {
+                    // هوية الدوري الإيطالي الحديثة
+                    drawCircle(color = Color(0xFF0B2C5D), radius = r * 0.92f)
+                    drawCircle(
+                        color = Color(0xFF38BDF8),
+                        radius = r * 0.56f,
+                        style = Stroke(width = r * 0.14f)
+                    )
+                }
+                "BL1" -> {
+                    // هوية الدوري الألماني الحديثة
+                    drawCircle(color = Color(0xFFD3010C), radius = r * 0.92f)
+                    drawCircle(color = Color.White, radius = r * 0.24f)
+                }
+                else -> {
+                    drawCircle(color = ActiveGreen, radius = r * 0.65f)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun RemoteCrestBadge(
     crestUrl: String?,
     fallbackLabel: String,
     modifier: Modifier = Modifier,
-    lightBackground: Boolean = false
+    lightBackground: Boolean = false,
+    leagueCode: String? = null
 ) {
     var bitmap by remember(crestUrl) {
         mutableStateOf(crestUrl?.let { CrestMemoryCache.get(it) })
@@ -1341,6 +1481,8 @@ private fun RemoteCrestBadge(
                     .fillMaxSize()
                     .padding(3.dp)
             )
+        } else if (leagueCode != null) {
+            ModernLeagueArtwork(leagueCode = leagueCode)
         } else {
             Text(
                 text = fallbackLabel.take(2),
@@ -1619,7 +1761,8 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                         crestUrl = match.leagueLogoUrl,
                                         fallbackLabel = match.league,
                                         modifier = Modifier.size(20.dp),
-                                        lightBackground = true
+                                        lightBackground = true,
+                                        leagueCode = match.leagueCode
                                     )
                                     Text(
                                         text = match.league,
@@ -1732,7 +1875,8 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                             crestUrl = MODERN_LEAGUE_LOGOS[league.code],
                             fallbackLabel = league.shortLabel,
                             modifier = Modifier.size(18.dp),
-                            lightBackground = true
+                            lightBackground = true,
+                            leagueCode = league.code
                         )
                         Text(
                             text = league.shortLabel,
