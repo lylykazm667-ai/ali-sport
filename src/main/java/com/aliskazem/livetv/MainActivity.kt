@@ -1,9 +1,11 @@
 package com.aliskazem.livetv
 
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.os.Bundle
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,13 +13,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -40,10 +46,31 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
+
+private const val FOOTBALL_DATA_API_KEY = "b11ae4a8257e485a83389f1ef51b8df8"
+private const val API_FOOTBALL_KEY = "cff0d26710ee2ab9ac363f5c81cf74b1"
 
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
+}
+
+enum class MatchFeedStatus {
+    SCHEDULED, LIVE, HALFTIME, FINISHED
 }
 
 data class ChannelItem(
@@ -67,12 +94,50 @@ data class CategoryItem(
     val channels: List<ChannelItem>
 )
 
-data class MatchScheduleItem(
+data class LiveMatchItem(
     val id: String,
-    val teams: String,
-    val tournament: String,
+    val utcIso: String,
+    val baghdadDate: String,
     val timeText: String,
-    val isLive: Boolean = false
+    val homeTeam: String,
+    val awayTeam: String,
+    val league: String,
+    val status: MatchFeedStatus,
+    val minute: String? = null,
+    val homeScore: Int? = null,
+    val awayScore: Int? = null
+)
+
+data class StandingRowItem(
+    val position: Int,
+    val teamName: String,
+    val played: Int,
+    val won: Int,
+    val draw: Int,
+    val lost: Int,
+    val goalDiff: Int,
+    val points: Int
+)
+
+data class LeagueOption(
+    val code: String,
+    val arabicName: String
+)
+
+data class SocialAccountItem(
+    val id: String,
+    val title: String,
+    val url: String,
+    val logoAssetName: String,
+    val fallbackGlyph: String,
+    val badgeBg: Color,
+    val badgeTextColor: Color = Color.White
+)
+
+private data class DayOption(
+    val key: String,
+    val dayTitle: String,
+    val dateLabel: String
 )
 
 private val ScreenBg = Color(0xFF060B08)
@@ -81,14 +146,317 @@ private val TileBg = Color(0xFF07120C)
 private val TileInnerBg = Color(0xFF040B07)
 private val BorderGreen = Color(0xFF143322)
 private val ActiveGreen = Color(0xFF10B981)
+private val LiveRed = Color(0xFFEF4444)
 private val TextWhite = Color(0xFFF3F6F4)
 private val TextMuted = Color(0xFF8FA398)
+
+private val STANDING_LEAGUES = listOf(
+    LeagueOption("PL", "الإنجليزي الممتاز"),
+    LeagueOption("PD", "الإسباني"),
+    LeagueOption("SA", "الإيطالي"),
+    LeagueOption("BL1", "الألماني"),
+    LeagueOption("FL1", "الفرنسي"),
+    LeagueOption("CL", "دوري الأبطال")
+)
+
+private val SOCIAL_ACCOUNTS = listOf(
+    SocialAccountItem(
+        id = "tiktok",
+        title = "TikTok (@ali.kazem70)",
+        url = "https://www.tiktok.com/@ali.kazem70",
+        logoAssetName = "tiktok",
+        fallbackGlyph = "♪",
+        badgeBg = Color(0xFF0A140F),
+        badgeTextColor = Color.White
+    ),
+    SocialAccountItem(
+        id = "telegram",
+        title = "Telegram (@Alikazem200)",
+        url = "https://t.me/Alikazem200",
+        logoAssetName = "telegram",
+        fallbackGlyph = "✈",
+        badgeBg = Color(0xFF1D9BF0),
+        badgeTextColor = Color.White
+    )
+)
+
+private fun isBrazilianCompetition(text: String): Boolean {
+    val normalized = text.lowercase(Locale.ROOT).trim()
+    val blockedKeywords = listOf(
+        "brazil",
+        "brazilian",
+        "brasileirao",
+        "brasileirão",
+        "campeonato brasileiro",
+        "serie a brazil",
+        "série a brazil",
+        "الدوري البرازيلي",
+        "البرازيلي",
+        "برازيل"
+    )
+    return blockedKeywords.any { normalized.contains(it) }
+}
+
+private fun translateCompetitionName(rawName: String, code: String? = null): String {
+    val clean = rawName.trim()
+    val lower = clean.lowercase(Locale.ROOT)
+    return when {
+        code == "PL" || lower.contains("premier league") -> "الدوري الإنجليزي الممتاز"
+        code == "PD" || lower.contains("la liga") || lower.contains("primera division") -> "الدوري الإسباني"
+        code == "SA" || lower.contains("serie a") -> "الدوري الإيطالي"
+        code == "BL1" || lower.contains("bundesliga") -> "الدوري الألماني"
+        code == "FL1" || lower.contains("ligue 1") -> "الدوري الفرنسي"
+        code == "CL" || lower.contains("champions league") -> "دوري أبطال أوروبا"
+        code == "ELC" || lower.contains("championship") -> "دوري البطولة الإنجليزية"
+        lower.contains("egypt") || clean.contains("المصري") -> "الدوري المصري"
+        lower.contains("iraq") || clean.contains("العراقي") -> "الدوري العراقي"
+        else -> clean.ifBlank { "بطولة رياضية" }
+    }
+}
+
+private fun translateTeamName(rawTeam: String): String {
+    val clean = rawTeam.trim()
+    val map = mapOf(
+        "manchester city fc" to "مانشستر سيتي",
+        "manchester city" to "مانشستر سيتي",
+        "arsenal fc" to "آرسنال",
+        "arsenal" to "آرسنال",
+        "liverpool fc" to "ليفربول",
+        "liverpool" to "ليفربول",
+        "chelsea fc" to "تشيلسي",
+        "chelsea" to "تشيلسي",
+        "manchester united fc" to "مانشستر يونايتد",
+        "manchester united" to "مانشستر يونايتد",
+        "tottenham hotspur fc" to "توتنهام",
+        "tottenham hotspur" to "توتنهام",
+        "newcastle united fc" to "نيوكاسل يونايتد",
+        "aston villa fc" to "أستون فيلا",
+        "everton fc" to "إيفرتون",
+        "brentford fc" to "برينتفورد",
+        "fulham fc" to "فولهام",
+        "real madrid cf" to "ريال مدريد",
+        "real madrid" to "ريال مدريد",
+        "fc barcelona" to "برشلونة",
+        "barcelona" to "برشلونة",
+        "club atlético de madrid" to "أتلتيكو مدريد",
+        "atletico madrid" to "أتلتيكو مدريد",
+        "fc internazionale milano" to "إنتر ميلان",
+        "inter milan" to "إنتر ميلان",
+        "ac milan" to "ميلان",
+        "juventus fc" to "يوفنتوس",
+        "juventus" to "يوفنتوس",
+        "ssc napoli" to "نابولي",
+        "napoli" to "نابولي",
+        "as roma" to "روما",
+        "ss lazio" to "لاتسيو",
+        "acf fiorentina" to "فيورنتينا",
+        "fc bayern münchen" to "بايرن ميونخ",
+        "bayern munich" to "بايرن ميونخ",
+        "borussia dortmund" to "بوروسيا دورتموند",
+        "paris saint-germain fc" to "باريس سان جيرمان",
+        "paris saint-germain" to "باريس سان جيرمان"
+    )
+    return map[clean.lowercase(Locale.ROOT)] ?: clean
+}
+
+private fun buildBaghdadDays(): List<DayOption> {
+    val baghdadZone = ZoneId.of("Asia/Baghdad")
+    val today = LocalDate.now(baghdadZone)
+    val arabicDays = mapOf(
+        1 to "الإثنين",
+        2 to "الثلاثاء",
+        3 to "الأربعاء",
+        4 to "الخميس",
+        5 to "الجمعة",
+        6 to "السبت",
+        7 to "الأحد"
+    )
+    val arabicMonths = listOf(
+        "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+        "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+    )
+    val isoFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+
+    return (0..6).map { offset ->
+        val d = today.plusDays(offset.toLong())
+        val dayName = arabicDays[d.dayOfWeek.value] ?: ""
+        val monthName = arabicMonths.getOrElse(d.monthValue - 1) { "" }
+        DayOption(
+            key = d.format(isoFormatter),
+            dayTitle = dayName,
+            dateLabel = "${d.dayOfMonth} $monthName"
+        )
+    }
+}
+
+private fun httpGetJson(urlString: String, headers: Map<String, String> = emptyMap()): String? {
+    var connection: HttpURLConnection? = null
+    return try {
+        val url = URL(urlString)
+        connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 12000
+            readTimeout = 12000
+            headers.forEach { (k, v) -> setRequestProperty(k, v) }
+        }
+        if (connection.responseCode in 200..299) {
+            connection.inputStream.bufferedReader().use { it.readText() }
+        } else {
+            null
+        }
+    } catch (_: Exception) {
+        null
+    } finally {
+        connection?.disconnect()
+    }
+}
+
+private fun parseFootballDataStatus(statusRaw: String): MatchFeedStatus {
+    return when (statusRaw.uppercase(Locale.ROOT)) {
+        "FINISHED", "AWARDED" -> MatchFeedStatus.FINISHED
+        "PAUSED", "HT" -> MatchFeedStatus.HALFTIME
+        "IN_PLAY", "LIVE" -> MatchFeedStatus.LIVE
+        else -> MatchFeedStatus.SCHEDULED
+    }
+}
+
+private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String): List<LiveMatchItem> {
+    return withContext(Dispatchers.IO) {
+        val url = "https://api.football-data.org/v4/matches?dateFrom=$dateFrom&dateTo=$dateTo"
+        val body = httpGetJson(url, mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY)) ?: return@withContext emptyList()
+
+        val result = mutableListOf<LiveMatchItem>()
+        val root = JSONObject(body)
+        val matchesArr = root.optJSONArray("matches") ?: JSONArray()
+
+        val baghdadZone = ZoneId.of("Asia/Baghdad")
+        val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
+        val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
+
+        for (i in 0 until matchesArr.length()) {
+            val item = matchesArr.optJSONObject(i) ?: continue
+            val compObj = item.optJSONObject("competition")
+            val areaObj = item.optJSONObject("area")
+
+            val compNameRaw = compObj?.optString("name", "") ?: ""
+            val compCode = compObj?.optString("code", "") ?: ""
+            val areaNameRaw = areaObj?.optString("name", "") ?: ""
+
+            if (
+                isBrazilianCompetition(compNameRaw) ||
+                isBrazilianCompetition(areaNameRaw) ||
+                compCode.equals("BSA", ignoreCase = true)
+            ) {
+                continue
+            }
+
+            val utcDateStr = item.optString("utcDate", "")
+            if (utcDateStr.isBlank()) continue
+
+            val instant = try {
+                Instant.parse(utcDateStr)
+            } catch (_: Exception) {
+                continue
+            }
+
+            val zdtBaghdad = instant.atZone(baghdadZone)
+            val bDate = zdtBaghdad.toLocalDate().format(dateFmt)
+            val bTime = zdtBaghdad.toLocalTime().format(timeFmt)
+
+            val homeObj = item.optJSONObject("homeTeam")
+            val awayObj = item.optJSONObject("awayTeam")
+            val homeName = translateTeamName(
+                homeObj?.optString("shortName")?.takeIf { it.isNotBlank() }
+                    ?: homeObj?.optString("name", "الفريق الأول")
+                    ?: "الفريق الأول"
+            )
+            val awayName = translateTeamName(
+                awayObj?.optString("shortName")?.takeIf { it.isNotBlank() }
+                    ?: awayObj?.optString("name", "الفريق الثاني")
+                    ?: "الفريق الثاني"
+            )
+
+            val scoreObj = item.optJSONObject("score")
+            val fullTimeObj = scoreObj?.optJSONObject("fullTime")
+            val homeScore = fullTimeObj?.opt("home")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+            val awayScore = fullTimeObj?.opt("away")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+
+            val status = parseFootballDataStatus(item.optString("status", "SCHEDULED"))
+            val minuteVal = item.opt("minute")?.takeIf { it != JSONObject.NULL }?.toString()?.takeIf { it.isNotBlank() }
+
+            result.add(
+                LiveMatchItem(
+                    id = item.optString("id", "fd_$i"),
+                    utcIso = utcDateStr,
+                    baghdadDate = bDate,
+                    timeText = bTime,
+                    homeTeam = homeName,
+                    awayTeam = awayName,
+                    league = translateCompetitionName(compNameRaw, compCode),
+                    status = status,
+                    minute = minuteVal,
+                    homeScore = homeScore,
+                    awayScore = awayScore
+                )
+            )
+        }
+
+        result.sortedBy { it.utcIso }
+    }
+}
+
+private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRowItem> {
+    if (isBrazilianCompetition(leagueCode) || leagueCode.equals("BSA", ignoreCase = true)) {
+        return emptyList()
+    }
+    return withContext(Dispatchers.IO) {
+        val url = "https://api.football-data.org/v4/competitions/$leagueCode/standings"
+        val body = httpGetJson(url, mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY)) ?: return@withContext emptyList()
+
+        val root = JSONObject(body)
+        val standingsArr = root.optJSONArray("standings") ?: JSONArray()
+        var totalStandingObj: JSONObject? = null
+        for (i in 0 until standingsArr.length()) {
+            val sObj = standingsArr.optJSONObject(i) ?: continue
+            if (sObj.optString("type").equals("TOTAL", ignoreCase = true)) {
+                totalStandingObj = sObj
+                break
+            }
+        }
+        val tableArr = (totalStandingObj ?: standingsArr.optJSONObject(0))?.optJSONArray("table") ?: JSONArray()
+
+        val rows = mutableListOf<StandingRowItem>()
+        for (i in 0 until tableArr.length()) {
+            val row = tableArr.optJSONObject(i) ?: continue
+            val teamObj = row.optJSONObject("team")
+            val teamName = translateTeamName(
+                teamObj?.optString("shortName")?.takeIf { it.isNotBlank() }
+                    ?: teamObj?.optString("name", "")
+                    ?: ""
+            )
+            if (teamName.isBlank()) continue
+
+            rows.add(
+                StandingRowItem(
+                    position = row.optInt("position", i + 1),
+                    teamName = teamName,
+                    played = row.optInt("playedGames", 0),
+                    won = row.optInt("won", 0),
+                    draw = row.optInt("draw", 0),
+                    lost = row.optInt("lost", 0),
+                    goalDiff = row.optInt("goalDifference", 0),
+                    points = row.optInt("points", 0)
+                )
+            )
+        }
+        rows
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // شعار التطبيق المرجعي: /assets/images/1793667103213.jpg -> drawable: img_1793667103213
         val appLogoAsset = "img_1793667103213"
 
         val beinChannels = listOf(
@@ -421,25 +789,43 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        val matches = listOf(
-            MatchScheduleItem(
+        val todayStr = try {
+            LocalDate.now(ZoneId.of("Asia/Baghdad")).format(DateTimeFormatter.ISO_LOCAL_DATE)
+        } catch (_: Exception) {
+            SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date())
+        }
+
+        val fallbackMatches = listOf(
+            LiveMatchItem(
                 id = "m1",
-                teams = "المنتخب العراقي × خصم دولي",
-                tournament = "مباراة دولية",
+                utcIso = "2026-11-23T18:00:00Z",
+                baghdadDate = todayStr,
                 timeText = "21:00",
-                isLive = true
+                homeTeam = "المنتخب العراقي",
+                awayTeam = "خصم دولي",
+                league = "مباراة دولية",
+                status = MatchFeedStatus.LIVE,
+                minute = "64"
             ),
-            MatchScheduleItem(
+            LiveMatchItem(
                 id = "m2",
-                teams = "ريال مدريد × برشلونة",
-                tournament = "الدوري الإسباني",
-                timeText = "23:00"
+                utcIso = "2026-11-23T20:00:00Z",
+                baghdadDate = todayStr,
+                timeText = "23:00",
+                homeTeam = "ريال مدريد",
+                awayTeam = "برشلونة",
+                league = "الدوري الإسباني",
+                status = MatchFeedStatus.SCHEDULED
             ),
-            MatchScheduleItem(
+            LiveMatchItem(
                 id = "m3",
-                teams = "مانشستر سيتي × أرسنال",
-                tournament = "الدوري الإنجليزي",
-                timeText = "19:30"
+                utcIso = "2026-11-23T16:30:00Z",
+                baghdadDate = todayStr,
+                timeText = "19:30",
+                homeTeam = "مانشستر سيتي",
+                awayTeam = "آرسنال",
+                league = "الدوري الإنجليزي الممتاز",
+                status = MatchFeedStatus.SCHEDULED
             )
         )
 
@@ -454,7 +840,8 @@ class MainActivity : ComponentActivity() {
                 AliKazemSportApp(
                     appLogoAsset = appLogoAsset,
                     categories = categories,
-                    matches = matches
+                    fallbackMatches = fallbackMatches,
+                    accounts = SOCIAL_ACCOUNTS
                 )
             }
         }
@@ -465,9 +852,10 @@ class MainActivity : ComponentActivity() {
 fun AliKazemSportApp(
     appLogoAsset: String,
     categories: List<CategoryItem>,
-    matches: List<MatchScheduleItem>
+    fallbackMatches: List<LiveMatchItem>,
+    accounts: List<SocialAccountItem>
 ) {
-    // 0: حساباتي | 1: جدول المباريات | 2: قنوات البث
+    // 0: حساباتي | 1: جدول المباريات والترتيب | 2: قنوات البث
     var selectedTab by remember { mutableIntStateOf(2) }
     var isArabic by remember { mutableStateOf(true) }
     var activeCategory by remember { mutableStateOf<CategoryItem?>(null) }
@@ -603,38 +991,506 @@ fun AliKazemSportApp(
                         if (currentCategory == null) {
                             CategoriesGridView(
                                 categories = categories,
-                                selectedChannel = selectedChannel,
-                                useBackupStream = useBackupStream,
-                                onToggleBackup = { useBackupStream = !useBackupStream },
-                                onClearChannel = {
-                                    selectedChannel = null
-                                    useBackupStream = false
-                                },
-                                onSelectCategory = { cat ->
-                                    activeCategory = cat
-                                }
+                                onSelectCategory = { cat -> activeCategory = cat }
                             )
                         } else {
                             CategoryChannelsListView(
                                 category = currentCategory,
                                 selectedChannel = selectedChannel,
-                                useBackupStream = useBackupStream,
-                                onToggleBackup = { useBackupStream = !useBackupStream },
                                 onBackToCategories = { activeCategory = null },
                                 onSelectChannel = { ch ->
                                     selectedChannel = ch
-                                    useBackupStream = false
-                                },
-                                onClearChannel = {
-                                    selectedChannel = null
                                     useBackupStream = false
                                 }
                             )
                         }
                     }
-                    1 -> MatchesScheduleView(matches = matches)
-                    else -> AccountsTabView()
+                    1 -> MatchesAndStandingsView(fallbackMatches = fallbackMatches)
+                    else -> AccountsTabView(accounts = accounts)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
+    val scope = rememberCoroutineScope()
+    val dayOptions = remember { buildBaghdadDays() }
+
+    // 0: جدول المباريات | 1: الترتيب
+    var subMode by remember { mutableIntStateOf(0) }
+    var selectedDayKey by remember { mutableStateOf(dayOptions.first().key) }
+    var matches by remember { mutableStateOf<List<LiveMatchItem>>(emptyList()) }
+    var isLoadingMatches by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    var selectedLeague by remember { mutableStateOf(STANDING_LEAGUES.first()) }
+    var standingsRows by remember { mutableStateOf<List<StandingRowItem>>(emptyList()) }
+    var isLoadingStandings by remember { mutableStateOf(false) }
+
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(15000)
+            tick++
+        }
+    }
+
+    fun loadMatches(manual: Boolean = false) {
+        scope.launch {
+            if (manual) isRefreshing = true else if (matches.isEmpty()) isLoadingMatches = true
+            val fromDate = dayOptions.first().key
+            val toDate = dayOptions.last().key
+            val fetched = fetchMatchesWithoutBrazil(fromDate, toDate)
+            if (fetched.isNotEmpty()) {
+                matches = fetched
+            } else if (matches.isEmpty()) {
+                matches = fallbackMatches.filter { !isBrazilianCompetition(it.league) }
+            }
+            isLoadingMatches = false
+            isRefreshing = false
+        }
+    }
+
+    fun loadStandings(code: String) {
+        scope.launch {
+            isLoadingStandings = true
+            standingsRows = fetchStandingsForLeague(code)
+            isLoadingStandings = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadMatches(manual = false)
+    }
+
+    LaunchedEffect(subMode, selectedLeague) {
+        if (subMode == 1) {
+            loadStandings(selectedLeague.code)
+        }
+    }
+
+    val dayMatches = remember(matches, selectedDayKey) {
+        matches.filter {
+            it.baghdadDate == selectedDayKey &&
+                !isBrazilianCompetition(it.league) &&
+                !isBrazilianCompetition(it.homeTeam) &&
+                !isBrazilianCompetition(it.awayTeam)
+        }
+    }
+
+    val selectedDayInfo = dayOptions.find { it.key == selectedDayKey } ?: dayOptions.first()
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(PanelBg)
+                .border(1.dp, BorderGreen, RoundedCornerShape(14.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (subMode == 0) ActiveGreen else Color.Transparent)
+                    .clickable { subMode = 0 }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "جدول المباريات",
+                    color = if (subMode == 0) Color.White else TextMuted,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (subMode == 1) ActiveGreen else Color.Transparent)
+                    .clickable { subMode = 1 }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "الترتيب",
+                    color = if (subMode == 1) Color.White else TextMuted,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        if (subMode == 0) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(PanelBg)
+                    .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                    .horizontalScroll(rememberScrollState())
+                    .padding(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                dayOptions.forEach { day ->
+                    val active = day.key == selectedDayKey
+                    Column(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (active) ActiveGreen else Color.Transparent)
+                            .clickable { selectedDayKey = day.key }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = day.dayTitle,
+                            color = if (active) Color.White else TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = day.dateLabel,
+                            color = if (active) Color.White.copy(alpha = 0.85f) else TextMuted.copy(alpha = 0.7f),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "مباريات ${selectedDayInfo.dayTitle}",
+                    color = TextWhite,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "${dayMatches.size} مباراة",
+                        color = ActiveGreen,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(ActiveGreen.copy(alpha = 0.16f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(PanelBg)
+                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                            .clickable { loadMatches(manual = true) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "تحديث",
+                            tint = ActiveGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            if (isLoadingMatches || isRefreshing) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = ActiveGreen)
+                }
+            } else if (dayMatches.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(PanelBg)
+                        .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "لا توجد مباريات لهذا اليوم ضمن البطولات المعتمدة",
+                        color = TextMuted,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 20.dp)
+                ) {
+                    items(dayMatches, key = { it.id }) { match ->
+                        val statusBadge = remember(match, tick) {
+                            buildMatchStatusBadge(match)
+                        }
+                        val hasScore = match.homeScore != null && match.awayScore != null &&
+                            (match.status == MatchFeedStatus.LIVE ||
+                                match.status == MatchFeedStatus.HALFTIME ||
+                                match.status == MatchFeedStatus.FINISHED)
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(PanelBg)
+                                .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "🏆 ${match.league}",
+                                    color = ActiveGreen,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                Text(
+                                    text = statusBadge.label,
+                                    color = if (statusBadge.isLive) Color.White else ActiveGreen,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            if (statusBadge.isLive) LiveRed else ActiveGreen.copy(alpha = 0.15f)
+                                        )
+                                        .padding(horizontal = 9.dp, vertical = 4.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = match.homeTeam,
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                Text(
+                                    text = if (hasScore) "${match.homeScore} - ${match.awayScore}" else match.timeText,
+                                    color = if (hasScore) ActiveGreen else TextWhite,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier
+                                        .padding(horizontal = 8.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(TileInnerBg)
+                                        .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+
+                                Text(
+                                    text = match.awayTeam,
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.End,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                STANDING_LEAGUES.forEach { league ->
+                    val selected = league.code == selectedLeague.code
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (selected) ActiveGreen else PanelBg)
+                            .border(1.dp, if (selected) ActiveGreen else BorderGreen, RoundedCornerShape(12.dp))
+                            .clickable { selectedLeague = league }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = league.arabicName,
+                            color = if (selected) Color.White else TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            if (isLoadingStandings) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = ActiveGreen)
+                }
+            } else if (standingsRows.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(PanelBg)
+                        .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "تعذر تحميل جدول الترتيب حالياً، أعد المحاولة لاحقاً",
+                        color = TextMuted,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(TileBg)
+                        .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("#", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp))
+                    Text("الفريق", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text("لعب", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
+                    Text("ف", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
+                    Text("ت", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
+                    Text("خ", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
+                    Text("نقاط", color = ActiveGreen, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(38.dp), textAlign = TextAlign.Center)
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(bottom = 20.dp)
+                ) {
+                    items(standingsRows, key = { "${it.position}_${it.teamName}" }) { row ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(PanelBg)
+                                .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 10.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${row.position}",
+                                color = if (row.position <= 4) ActiveGreen else TextMuted,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.width(26.dp)
+                            )
+                            Text(
+                                text = row.teamName,
+                                color = TextWhite,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text("${row.played}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
+                            Text("${row.won}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
+                            Text("${row.draw}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
+                            Text("${row.lost}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(26.dp), textAlign = TextAlign.Center)
+                            Text(
+                                text = "${row.points}",
+                                color = ActiveGreen,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.width(38.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class StatusBadgeUi(
+    val label: String,
+    val isLive: Boolean
+)
+
+private fun buildMatchStatusBadge(match: LiveMatchItem): StatusBadgeUi {
+    return when (match.status) {
+        MatchFeedStatus.FINISHED -> StatusBadgeUi("انتهت", isLive = false)
+        MatchFeedStatus.HALFTIME -> StatusBadgeUi("بين الشوطين", isLive = true)
+        MatchFeedStatus.LIVE -> {
+            val minTxt = if (!match.minute.isNullOrBlank()) "${match.minute}'" else "مباشر"
+            StatusBadgeUi(minTxt, isLive = true)
+        }
+        MatchFeedStatus.SCHEDULED -> {
+            val kickMs = try {
+                Instant.parse(match.utcIso).toEpochMilli()
+            } catch (_: Exception) {
+                0L
+            }
+            val elapsedMin = if (kickMs > 0L) ((System.currentTimeMillis() - kickMs) / 60000L) else -1L
+            if (elapsedMin in 0..120) {
+                StatusBadgeUi("$elapsedMin'", isLive = true)
+            } else {
+                StatusBadgeUi(match.timeText, isLive = false)
             }
         }
     }
@@ -671,82 +1527,6 @@ private fun TopNavTab(
             fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
             maxLines = 1
         )
-    }
-}
-
-@Composable
-private fun SelectedStreamBanner(
-    channel: ChannelItem,
-    useBackupStream: Boolean,
-    onToggleBackup: () -> Unit,
-    onClose: () -> Unit
-) {
-    val activeUrl = if (useBackupStream && !channel.backupUrl.isNullOrBlank()) {
-        channel.backupUrl
-    } else {
-        channel.url
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(PanelBg)
-            .border(1.dp, ActiveGreen, RoundedCornerShape(16.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "القناة المحددة: ${channel.name}",
-                color = TextWhite,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "إغلاق",
-                color = ActiveGreen,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(ActiveGreen.copy(alpha = 0.15f))
-                    .clickable(onClick = onClose)
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
-            )
-        }
-
-        Text(
-            text = activeUrl,
-            color = ActiveGreen,
-            fontSize = 11.sp,
-            maxLines = 1
-        )
-
-        if (activeUrl.isNotBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            StreamVideoPlayer(streamUrl = activeUrl)
-        }
-
-        if (!channel.backupUrl.isNullOrBlank()) {
-            Text(
-                text = if (useBackupStream) "السيرفر الاحتياطي مفعّل (اضغط للأساسي)" else "تبديل إلى السيرفر الاحتياطي",
-                color = TextWhite,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(TileInnerBg)
-                    .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                    .clickable(onClick = onToggleBackup)
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-            )
-        }
     }
 }
 
@@ -890,49 +1670,8 @@ private fun FullScreenStreamPlayer(
 }
 
 @Composable
-private fun StreamVideoPlayer(
-    streamUrl: String,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val exoPlayer = remember(streamUrl) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(streamUrl))
-            prepare()
-            playWhenReady = true
-        }
-    }
-
-    DisposableEffect(exoPlayer) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
-
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = true
-            }
-        },
-        update = { playerView ->
-            playerView.player = exoPlayer
-        },
-        modifier = modifier
-            .fillMaxWidth()
-            .height(210.dp)
-            .clip(RoundedCornerShape(12.dp))
-    )
-}
-
-@Composable
 private fun CategoriesGridView(
     categories: List<CategoryItem>,
-    selectedChannel: ChannelItem?,
-    useBackupStream: Boolean,
-    onToggleBackup: () -> Unit,
-    onClearChannel: () -> Unit,
     onSelectCategory: (CategoryItem) -> Unit
 ) {
     val rows = categories.chunked(2)
@@ -1010,11 +1749,8 @@ private fun CategoryGridCard(
 private fun CategoryChannelsListView(
     category: CategoryItem,
     selectedChannel: ChannelItem?,
-    useBackupStream: Boolean,
-    onToggleBackup: () -> Unit,
     onBackToCategories: () -> Unit,
-    onSelectChannel: (ChannelItem) -> Unit,
-    onClearChannel: () -> Unit
+    onSelectChannel: (ChannelItem) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1121,81 +1857,69 @@ private fun CategoryChannelsListView(
 }
 
 @Composable
-private fun MatchesScheduleView(matches: List<MatchScheduleItem>) {
+private fun AccountsTabView(accounts: List<SocialAccountItem>) {
+    val context = LocalContext.current
+    val rows = accounts.chunked(2)
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(bottom = 20.dp)
     ) {
-        items(matches, key = { it.id }) { match ->
+        items(rows) { rowItems ->
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(PanelBg)
-                    .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = match.teams,
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = match.tournament,
-                        color = TextMuted,
-                        fontSize = 12.sp
-                    )
-                }
+                rowItems.forEach { acc ->
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(TileBg)
+                            .border(1.dp, BorderGreen, RoundedCornerShape(22.dp))
+                            .clickable {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(acc.url))
+                                context.startActivity(intent)
+                            }
+                            .padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(112.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(TileInnerBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ChannelOrCategoryArtwork(
+                                assetName = acc.logoAssetName,
+                                contentDescription = acc.title,
+                                badgeText = acc.fallbackGlyph,
+                                badgeBg = acc.badgeBg,
+                                badgeTextColor = acc.badgeTextColor
+                            )
+                        }
 
-                Text(
-                    text = if (match.isLive) "مباشر • ${match.timeText}" else match.timeText,
-                    color = if (match.isLive) Color.White else ActiveGreen,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (match.isLive) ActiveGreen else ActiveGreen.copy(alpha = 0.14f))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = acc.title,
+                            color = TextWhite,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                if (rowItems.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun AccountsTabView() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(PanelBg)
-            .border(1.dp, BorderGreen, RoundedCornerShape(18.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(
-            text = "حسابات القناة والمنصات",
-            color = TextWhite,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp
-        )
-        Text(
-            text = "TikTok: علي كاظم 🇮🇶🇮🇶",
-            color = ActiveGreen,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = "YouTube & Live Streams: Ali Kazem SPORTS",
-            color = TextMuted,
-            fontSize = 13.sp
-        )
     }
 }
 
