@@ -78,7 +78,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private const val FOOTBALL_DATA_API_KEY = "b11ae4a8257e485a83389f1ef51b8df8"
-private const val API_FOOTBALL_KEY = "cff0d26710ee2ab9ac363f5c81cf74b1"
+private val API_FOOTBALL_KEYS = listOf(
+    "cff0d26710ee2ab9ac363f5c81cf74b1"
+)
 private const val CURRENT_SEASON = 2026
 
 enum class CategoryId {
@@ -329,6 +331,7 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "milan" to "ميلان",
     "ac milan" to "ميلان",
     "como" to "كومو",
+    "como 1907" to "كومو",
     "juventus" to "يوفنتوس",
     "napoli" to "نابولي",
     "bologna" to "بولونيا",
@@ -409,6 +412,7 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "auxerre" to "أوكسير",
     "strasbourg" to "ستراسبورغ",
     "angers" to "أنجيه",
+    "angers sco" to "أنجيه",
     "le havre" to "لو هافر",
     "le mans" to "لومان",
     "troyes" to "تروا",
@@ -461,14 +465,17 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "bodo glimt" to "بودو غليمت",
     "porto" to "بورتو",
     "aek athens" to "أيك أثينا",
+    "pae aek" to "أيك أثينا",
+    "aek" to "أيك أثينا",
     "sabah" to "صباح",
     "feyenoord" to "فينورد",
     "slavia praha" to "سلافيا براغ",
-    "slovan bratislava" to "سلوفان براتيسلافا"
+    "slovan bratislava" to "سلوفان براتيسلافا",
+    "sl bratislava" to "سلوفان براتيسلافا"
 )
 
 private fun normalizeTeamLookupKey(raw: String): String {
-    var s = raw.trim().lowercase(Locale.ROOT)
+    val s = raw.trim().lowercase(Locale.ROOT)
         .replace('أ', 'ا')
         .replace('إ', 'ا')
         .replace('آ', 'ا')
@@ -490,11 +497,65 @@ private fun normalizeTeamLookupKey(raw: String): String {
 
     val stopWords = setOf(
         "fc", "cf", "sc", "ac", "afc", "cd", "ud", "sd", "rc",
-        "as", "ss", "us", "sv", "bv", "kv", "fk", "sk", "bc",
+        "as", "ss", "us", "sv", "bv", "kv", "fk", "sk", "bc", "pae", "sl",
         "club", "de", "del", "la", "las", "los", "al"
     )
     val tokens = s.split(Regex("\\s+")).filter { it.isNotBlank() && it !in stopWords }
     return tokens.joinToString(" ").trim()
+}
+
+private fun transliterateToArabic(raw: String): String {
+    val cleaned = raw.trim()
+        .replace(Regex("\\b(FC|CF|SC|AC|AFC|CD|UD|SD|RC|AS|SS|US|SV|BV|KV|FK|SK|BC|PAE|SL)\\b", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+    if (cleaned.isBlank()) return "فريق"
+
+    val lower = cleaned.lowercase(Locale.ROOT)
+        .replace("sh", "ش")
+        .replace("ch", "تش")
+        .replace("th", "ث")
+        .replace("ph", "ف")
+        .replace("gh", "غ")
+        .replace("kh", "خ")
+        .replace("oo", "و")
+        .replace("ee", "ي")
+
+    val sb = StringBuilder()
+    for (ch in lower) {
+        sb.append(
+            when (ch) {
+                'a' -> 'ا'
+                'b' -> 'ب'
+                'c' -> 'ك'
+                'd' -> 'د'
+                'e' -> 'ي'
+                'f' -> 'ف'
+                'g' -> 'غ'
+                'h' -> 'ه'
+                'i' -> 'ي'
+                'j' -> 'ج'
+                'k' -> 'ك'
+                'l' -> 'ل'
+                'm' -> 'م'
+                'n' -> 'ن'
+                'o' -> 'و'
+                'p' -> 'ب'
+                'q' -> 'ك'
+                'r' -> 'ر'
+                's' -> 'س'
+                't' -> 'ت'
+                'u' -> 'و'
+                'v' -> 'ف'
+                'w' -> 'و'
+                'x' -> 'كس'
+                'y' -> 'ي'
+                'z' -> 'ز'
+                else -> ch
+            }
+        )
+    }
+    return sb.toString().replace(Regex("\\s+"), " ").trim()
 }
 
 private object CrestMemoryCache {
@@ -613,11 +674,12 @@ private fun translateCompetitionName(rawName: String, code: String? = null): Str
 
 private fun translateTeamName(rawTeam: String): String {
     val clean = rawTeam.trim()
-    if (clean.isBlank()) return clean
+    if (clean.isBlank()) return "فريق"
     TEAM_ARABIC_NAMES[clean.lowercase(Locale.ROOT)]?.let { return it }
     val normalized = normalizeTeamLookupKey(clean)
     TEAM_ARABIC_NAMES[normalized]?.let { return it }
-    return clean
+    val hasArabic = clean.any { it in '\u0600'..'\u06FF' }
+    return if (hasArabic) clean else transliterateToArabic(clean)
 }
 
 private fun buildBaghdadDays(): List<DayOption> {
@@ -672,6 +734,27 @@ private fun httpGetJson(urlString: String, headers: Map<String, String> = emptyM
     }
 }
 
+private suspend fun httpGetWithApiFootballKeys(endpointPathWithQuery: String): String? {
+    for (apiKey in API_FOOTBALL_KEYS) {
+        val url = "https://v3.football.api-sports.io/$endpointPathWithQuery"
+        val body = httpGetJson(url, mapOf("x-apisports-key" to apiKey))
+        if (!body.isNullOrBlank()) {
+            val root = try {
+                JSONObject(body)
+            } catch (_: Exception) {
+                null
+            }
+            val errorsObj = root?.optJSONObject("errors")
+            val hasErrors = errorsObj != null && errorsObj.length() > 0
+            val resultsCount = root?.optInt("results", 0) ?: 0
+            if (!hasErrors && resultsCount > 0) {
+                return body
+            }
+        }
+    }
+    return null
+}
+
 private fun parseFootballDataStatus(statusRaw: String): MatchFeedStatus {
     return when (statusRaw.uppercase(Locale.ROOT)) {
         "FINISHED", "AWARDED", "FT", "AET", "PEN" -> MatchFeedStatus.FINISHED
@@ -689,8 +772,9 @@ private suspend fun fetchApiFootballMatchesForLeague(
     dateTo: String
 ): List<LiveMatchItem> {
     return withContext(Dispatchers.IO) {
-        val url = "https://v3.football.api-sports.io/fixtures?league=$leagueId&season=$season&from=$dateFrom&to=$dateTo&timezone=Asia/Baghdad"
-        val body = httpGetJson(url, mapOf("x-apisports-key" to API_FOOTBALL_KEY)) ?: return@withContext emptyList()
+        val body = httpGetWithApiFootballKeys(
+            "fixtures?league=$leagueId&season=$season&from=$dateFrom&to=$dateTo&timezone=Asia/Baghdad"
+        ) ?: return@withContext emptyList()
 
         val list = mutableListOf<LiveMatchItem>()
         val root = JSONObject(body)
@@ -913,8 +997,7 @@ private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRo
         val extraIds = API_FOOTBALL_LEAGUE_IDS[leagueCode]
         if (extraIds != null) {
             for (leagueId in extraIds) {
-                val url = "https://v3.football.api-sports.io/standings?league=$leagueId&season=$CURRENT_SEASON"
-                val body = httpGetJson(url, mapOf("x-apisports-key" to API_FOOTBALL_KEY)) ?: continue
+                val body = httpGetWithApiFootballKeys("standings?league=$leagueId&season=$CURRENT_SEASON") ?: continue
                 val parsed = parseApiFootballStandingsRows(body)
                 if (parsed.isNotEmpty()) {
                     return@withContext parsed
