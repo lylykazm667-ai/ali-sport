@@ -1657,8 +1657,8 @@ private fun LeagueFallbackMark(
                         drawCircle(color = Color(0xFF071C24), radius = r * 0.94f)
                         val wave = Path().apply {
                             moveTo(cx - r * 0.46f, cy + r * 0.05f)
-                            quadraticTo(cx - r * 0.15f, cy - r * 0.36f, cx, cy)
-                            quadraticTo(cx + r * 0.15f, cy + r * 0.36f, cx + r * 0.46f, cy - r * 0.05f)
+                            quadraticBezierTo(cx - r * 0.15f, cy - r * 0.36f, cx, cy)
+                            quadraticBezierTo(cx + r * 0.15f, cy + r * 0.36f, cx + r * 0.46f, cy - r * 0.05f)
                         }
                         drawPath(
                             path = wave,
