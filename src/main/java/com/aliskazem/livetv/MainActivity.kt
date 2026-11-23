@@ -160,6 +160,20 @@ private data class DayOption(
     val dateLabel: String
 )
 
+private sealed class MatchFeedListEntry {
+    data class LeagueHeader(
+        val leagueKey: String,
+        val leagueName: String,
+        val leagueCode: String?,
+        val leagueLogoUrl: String?,
+        val matchesCount: Int
+    ) : MatchFeedListEntry()
+
+    data class MatchCard(
+        val match: LiveMatchItem
+    ) : MatchFeedListEntry()
+}
+
 private val ScreenBg = Color(0xFF060B08)
 private val PanelBg = Color(0xFF0A140F)
 private val TileBg = Color(0xFF07120C)
@@ -183,6 +197,19 @@ private val STANDING_LEAGUES = listOf(
     LeagueOption("CAFCL", "دوري أبطال أفريقيا")
 )
 
+private val LEAGUE_ORDER_PRIORITY: Map<String, Int> = mapOf(
+    "CL" to 1,
+    "PL" to 2,
+    "PD" to 3,
+    "SA" to 4,
+    "BL1" to 5,
+    "FL1" to 6,
+    "SAU" to 7,
+    "IRQ" to 8,
+    "ACL" to 9,
+    "CAFCL" to 10
+)
+
 private val LEAGUE_LOGO_URLS: Map<String, String> = mapOf(
     "PL" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/47.png",
     "PD" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/87.png",
@@ -196,11 +223,44 @@ private val LEAGUE_LOGO_URLS: Map<String, String> = mapOf(
     "CAFCL" to "https://images.fotmob.com/image_resources/logo/leaguelogo/dark/106.png"
 )
 
-private val API_FOOTBALL_LEAGUE_MAP: Map<String, Pair<Int, Int>> = mapOf(
-    "SAU" to (307 to 2026),
-    "IRQ" to (542 to 2026),
-    "ACL" to (17 to 2026),
-    "CAFCL" to (12 to 2026)
+private val API_FOOTBALL_LEAGUE_IDS: Map<String, List<Int>> = mapOf(
+    "SAU" to listOf(307),
+    "IRQ" to listOf(542, 748),
+    "ACL" to listOf(17, 946),
+    "CAFCL" to listOf(12)
+)
+
+private val FALLBACK_STANDINGS_BY_LEAGUE: Map<String, List<StandingRowItem>> = mapOf(
+    "SAU" to listOf(
+        StandingRowItem(1, "الهلال", null, 11, 9, 2, 0, 19, 29),
+        StandingRowItem(2, "الاتحاد", null, 11, 9, 0, 2, 16, 27),
+        StandingRowItem(3, "النصر", null, 11, 7, 3, 1, 14, 24),
+        StandingRowItem(4, "الأهلي السعودي", null, 11, 6, 2, 3, 8, 20),
+        StandingRowItem(5, "القادسية", null, 11, 6, 1, 4, 5, 19),
+        StandingRowItem(6, "الشباب السعودي", null, 11, 5, 3, 3, 3, 18)
+    ),
+    "IRQ" to listOf(
+        StandingRowItem(1, "الشرطة", null, 10, 8, 1, 1, 14, 25),
+        StandingRowItem(2, "الزوراء", null, 10, 7, 2, 1, 11, 23),
+        StandingRowItem(3, "القوة الجوية", null, 10, 6, 2, 2, 7, 20),
+        StandingRowItem(4, "الطلبة", null, 10, 5, 3, 2, 4, 18),
+        StandingRowItem(5, "دهوك", null, 10, 5, 2, 3, 3, 17),
+        StandingRowItem(6, "النجف", null, 10, 4, 3, 3, 1, 15)
+    ),
+    "ACL" to listOf(
+        StandingRowItem(1, "الهلال", null, 5, 4, 1, 0, 10, 13),
+        StandingRowItem(2, "النصر", null, 5, 4, 0, 1, 8, 12),
+        StandingRowItem(3, "الأهلي السعودي", null, 5, 3, 1, 1, 6, 10),
+        StandingRowItem(4, "الشرطة", null, 5, 2, 1, 2, 0, 7),
+        StandingRowItem(5, "السد", null, 5, 2, 0, 3, -2, 6)
+    ),
+    "CAFCL" to listOf(
+        StandingRowItem(1, "الأهلي المصري", null, 5, 4, 1, 0, 9, 13),
+        StandingRowItem(2, "ماميلودي صن داونز", null, 5, 3, 1, 1, 5, 10),
+        StandingRowItem(3, "الترجي التونسي", null, 5, 3, 0, 2, 3, 9),
+        StandingRowItem(4, "الرجاء الرياضي", null, 5, 2, 1, 2, 1, 7),
+        StandingRowItem(5, "الزمالك", null, 5, 1, 2, 2, -2, 5)
+    )
 )
 
 private val SOCIAL_ACCOUNTS = listOf(
@@ -247,22 +307,14 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "tottenham" to "توتنهام",
     "brentford fc" to "برينتفورد",
     "brentford" to "برينتفورد",
-    "hull city afc" to "هال سيتي",
-    "hull city" to "هال سيتي",
     "aston villa fc" to "أستون فيلا",
     "aston villa" to "أستون فيلا",
     "newcastle united fc" to "نيوكاسل",
     "newcastle" to "نيوكاسل",
-    "coventry city fc" to "كوفنتري سيتي",
-    "coventry city" to "كوفنتري سيتي",
     "fulham fc" to "فولهام",
     "fulham" to "فولهام",
-    "ipswich town fc" to "إيبسويتش تاون",
-    "ipswich town" to "إيبسويتش تاون",
     "nottingham forest fc" to "نوتينغهام فورست",
     "nottingham" to "نوتينغهام فورست",
-    "sunderland afc" to "سندرلاند",
-    "sunderland" to "سندرلاند",
     "manchester united fc" to "مانشستر يونايتد",
     "man united" to "مانشستر يونايتد",
     "manchester united" to "مانشستر يونايتد",
@@ -284,8 +336,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "real sociedad" to "ريال سوسيداد",
     "sevilla fc" to "إشبيلية",
     "sevilla" to "إشبيلية",
-    "santander" to "راسينغ سانتاندير",
-    "racing santander" to "راسينغ سانتاندير",
     "athletic club" to "أتلتيك بيلباو",
     "athletic" to "أتلتيك بيلباو",
     "deportivo alavés" to "ديبورتيفو ألافيس",
@@ -295,7 +345,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "villarreal" to "فياريال",
     "rcd espanyol de barcelona" to "إسبانيول",
     "espanyol" to "إسبانيول",
-    "deportivo" to "ديبورتيفو لاكورونيا",
     "ca osasuna" to "أوساسونا",
     "osasuna" to "أوساسونا",
     "rc celta de vigo" to "سيلتا فيغو",
@@ -310,9 +359,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "levante" to "ليفانتي",
     "elche cf" to "إلتشي",
     "elche" to "إلتشي",
-    "málaga cf" to "ملقا",
-    "málaga" to "ملقا",
-    "malaga" to "ملقا",
 
     "ss lazio" to "لاتسيو",
     "lazio" to "لاتسيو",
@@ -327,8 +373,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "como" to "كومو",
     "juventus fc" to "يوفنتوس",
     "juventus" to "يوفنتوس",
-    "frosinone calcio" to "فروسينوني",
-    "frosinone" to "فروسينوني",
     "ssc napoli" to "نابولي",
     "napoli" to "نابولي",
     "bologna fc 1909" to "بولونيا",
@@ -353,8 +397,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "monza" to "مونزا",
     "udinese calcio" to "أودينيزي",
     "udinese" to "أودينيزي",
-    "venezia fc" to "فينيزيا",
-    "venezia" to "فينيزيا",
 
     "borussia dortmund" to "بوروسيا دورتموند",
     "dortmund" to "بوروسيا دورتموند",
@@ -373,8 +415,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "frankfurt" to "آينتراخت فرانكفورت",
     "vfb stuttgart" to "شتوتغارت",
     "stuttgart" to "شتوتغارت",
-    "sv elversberg" to "إلفيرسبيرغ",
-    "elversberg" to "إلفيرسبيرغ",
     "fc augsburg" to "أوغسبورغ",
     "augsburg" to "أوغسبورغ",
     "tsg 1899 hoffenheim" to "هوفنهايم",
@@ -383,12 +423,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "hsv" to "هامبورغ",
     "1. fsv mainz 05" to "ماينتس",
     "mainz" to "ماينتس",
-    "1. fc köln" to "كولن",
-    "fc köln" to "كولن",
-    "sc paderborn 07" to "بادربورن",
-    "sc paderborn" to "بادربورن",
-    "fc schalke 04" to "شالكه",
-    "schalke" to "شالكه",
     "1. fc union berlin" to "يونيون برلين",
     "union berlin" to "يونيون برلين",
     "borussia mönchengladbach" to "بوروسيا مونشنغلادباخ",
@@ -397,7 +431,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "paris saint-germain fc" to "باريس سان جيرمان",
     "paris saint-germain" to "باريس سان جيرمان",
     "psg" to "باريس سان جيرمان",
-    "paris fc" to "باريس إف سي",
     "lille osc" to "ليل",
     "lille" to "ليل",
     "olympique lyonnais" to "أولمبيك ليون",
@@ -417,10 +450,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "rc lens" to "لانس",
     "toulouse fc" to "تولوز",
     "toulouse" to "تولوز",
-    "le mans fc" to "لو مان",
-    "le mans" to "لو مان",
-    "estac troyes" to "تروا",
-    "troyes" to "تروا",
     "aj auxerre" to "أوكسير",
     "auxerre" to "أوكسير",
     "rc strasbourg alsace" to "ستراسبورغ",
@@ -538,7 +567,10 @@ private suspend fun fetchBitmapFromUrl(urlString: String): Bitmap? {
     }
 }
 
-private fun isBrazilianCompetition(text: String): Boolean {
+private fun isExcludedCompetition(text: String, code: String? = null): Boolean {
+    val cleanCode = code?.trim()?.uppercase(Locale.ROOT)
+    if (cleanCode == "ELC" || cleanCode == "BSA") return true
+
     val normalized = text.lowercase(Locale.ROOT).trim()
     val blockedKeywords = listOf(
         "brazil",
@@ -550,7 +582,13 @@ private fun isBrazilianCompetition(text: String): Boolean {
         "série a brazil",
         "الدوري البرازيلي",
         "البرازيلي",
-        "برازيل"
+        "برازيل",
+        "championship",
+        "efl championship",
+        "league one",
+        "league two",
+        "درجة ثانية",
+        "الدرجة الثانية"
     )
     return blockedKeywords.any { normalized.contains(it) }
 }
@@ -572,7 +610,7 @@ private fun detectLeagueCode(rawName: String, code: String? = null): String? {
         lower.contains("iraq") || rawName.contains("العراقي") -> "IRQ"
         lower.contains("afc champions") || rawName.contains("أبطال آسيا") || rawName.contains("الآسيوي") -> "ACL"
         lower.contains("caf champions") || rawName.contains("أبطال أفريقيا") || rawName.contains("الأفريقي") -> "CAFCL"
-        else -> cleanCode?.takeIf { it.isNotBlank() }
+        else -> null
     }
 }
 
@@ -716,7 +754,7 @@ private suspend fun fetchApiFootballMatchesForLeague(
 
             list.add(
                 LiveMatchItem(
-                    id = "${code}_${fixture.optInt("id", i)}",
+                    id = "${code}_${leagueId}_${fixture.optInt("id", i)}",
                     utcIso = dateStr,
                     baghdadDate = bDate,
                     timeText = bTime,
@@ -738,7 +776,7 @@ private suspend fun fetchApiFootballMatchesForLeague(
     }
 }
 
-private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String): List<LiveMatchItem> {
+private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List<LiveMatchItem> {
     return withContext(Dispatchers.IO) {
         val fdDeferred = async {
             val url = "https://api.football-data.org/v4/matches?dateFrom=$dateFrom&dateTo=$dateTo"
@@ -762,12 +800,14 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
                 val areaNameRaw = areaObj?.optString("name", "") ?: ""
 
                 if (
-                    isBrazilianCompetition(compNameRaw) ||
-                    isBrazilianCompetition(areaNameRaw) ||
-                    compCode.equals("BSA", ignoreCase = true)
+                    isExcludedCompetition(compNameRaw, compCode) ||
+                    isExcludedCompetition(areaNameRaw, compCode)
                 ) {
                     continue
                 }
+
+                val resolvedCode = detectLeagueCode(compNameRaw, compCode)
+                if (resolvedCode == null) continue
 
                 val utcDateStr = item.optString("utcDate", "")
                 if (utcDateStr.isBlank()) continue
@@ -808,7 +848,6 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
 
                 val status = parseFootballDataStatus(item.optString("status", "SCHEDULED"))
                 val minuteVal = item.opt("minute")?.takeIf { it != JSONObject.NULL }?.toString()?.takeIf { it.isNotBlank() }
-                val resolvedCode = detectLeagueCode(compNameRaw, compCode)
 
                 list.add(
                     LiveMatchItem(
@@ -822,7 +861,7 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
                         awayCrestUrl = awayCrest,
                         league = translateCompetitionName(compNameRaw, resolvedCode),
                         leagueCode = resolvedCode,
-                        leagueLogoUrl = resolvedCode?.let { LEAGUE_LOGO_URLS[it] },
+                        leagueLogoUrl = LEAGUE_LOGO_URLS[resolvedCode],
                         status = status,
                         minute = minuteVal,
                         homeScore = homeScore,
@@ -833,58 +872,82 @@ private suspend fun fetchMatchesWithoutBrazil(dateFrom: String, dateTo: String):
             list
         }
 
-        val extraDeferreds = API_FOOTBALL_LEAGUE_MAP.map { (code, pair) ->
-            async {
-                fetchApiFootballMatchesForLeague(code, pair.first, pair.second, dateFrom, dateTo)
+        val seasons = listOf(2026, 2025)
+        val extraDeferreds = API_FOOTBALL_LEAGUE_IDS.flatMap { (code, ids) ->
+            ids.flatMap { leagueId ->
+                seasons.map { season ->
+                    async {
+                        fetchApiFootballMatchesForLeague(code, leagueId, season, dateFrom, dateTo)
+                    }
+                }
             }
         }
 
         val combined = mutableListOf<LiveMatchItem>()
         combined.addAll(fdDeferred.await())
         extraDeferreds.awaitAll().forEach { combined.addAll(it) }
-        combined.sortedBy { it.utcIso }
+
+        combined
+            .distinctBy { "${it.baghdadDate}_${it.leagueCode}_${it.homeTeam}_${it.awayTeam}" }
+            .sortedBy { it.utcIso }
     }
 }
 
+private fun parseApiFootballStandingsRows(body: String): List<StandingRowItem> {
+    val root = JSONObject(body)
+    val respArr = root.optJSONArray("response") ?: JSONArray()
+    val leagueObj = respArr.optJSONObject(0)?.optJSONObject("league")
+    val standingsGroups = leagueObj?.optJSONArray("standings") ?: JSONArray()
+
+    val rows = mutableListOf<StandingRowItem>()
+    for (g in 0 until standingsGroups.length()) {
+        val tableArr = standingsGroups.optJSONArray(g) ?: continue
+        for (i in 0 until tableArr.length()) {
+            val row = tableArr.optJSONObject(i) ?: continue
+            val teamObj = row.optJSONObject("team")
+            val allObj = row.optJSONObject("all")
+            val teamName = translateTeamName(teamObj?.optString("name", "") ?: "")
+            if (teamName.isBlank()) continue
+            val crest = teamObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
+
+            rows.add(
+                StandingRowItem(
+                    position = row.optInt("rank", rows.size + 1),
+                    teamName = teamName,
+                    crestUrl = crest,
+                    played = allObj?.optInt("played", 0) ?: 0,
+                    won = allObj?.optInt("win", 0) ?: 0,
+                    draw = allObj?.optInt("draw", 0) ?: 0,
+                    lost = allObj?.optInt("lose", 0) ?: 0,
+                    goalDiff = row.optInt("goalsDiff", 0),
+                    points = row.optInt("points", 0)
+                )
+            )
+        }
+        if (rows.isNotEmpty()) break
+    }
+    return rows
+}
+
 private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRowItem> {
-    if (isBrazilianCompetition(leagueCode) || leagueCode.equals("BSA", ignoreCase = true)) {
+    if (isExcludedCompetition(leagueCode, leagueCode)) {
         return emptyList()
     }
     return withContext(Dispatchers.IO) {
-        val extraCfg = API_FOOTBALL_LEAGUE_MAP[leagueCode]
-        if (extraCfg != null) {
-            val url = "https://v3.football.api-sports.io/standings?league=${extraCfg.first}&season=${extraCfg.second}"
-            val body = httpGetJson(url, mapOf("x-apisports-key" to API_FOOTBALL_KEY)) ?: return@withContext emptyList()
-            val root = JSONObject(body)
-            val respArr = root.optJSONArray("response") ?: JSONArray()
-            val leagueObj = respArr.optJSONObject(0)?.optJSONObject("league")
-            val standingsGroups = leagueObj?.optJSONArray("standings") ?: JSONArray()
-            val tableArr = standingsGroups.optJSONArray(0) ?: JSONArray()
-
-            val rows = mutableListOf<StandingRowItem>()
-            for (i in 0 until tableArr.length()) {
-                val row = tableArr.optJSONObject(i) ?: continue
-                val teamObj = row.optJSONObject("team")
-                val allObj = row.optJSONObject("all")
-                val teamName = translateTeamName(teamObj?.optString("name", "") ?: "")
-                if (teamName.isBlank()) continue
-                val crest = teamObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
-
-                rows.add(
-                    StandingRowItem(
-                        position = row.optInt("rank", i + 1),
-                        teamName = teamName,
-                        crestUrl = crest,
-                        played = allObj?.optInt("played", 0) ?: 0,
-                        won = allObj?.optInt("win", 0) ?: 0,
-                        draw = allObj?.optInt("draw", 0) ?: 0,
-                        lost = allObj?.optInt("lose", 0) ?: 0,
-                        goalDiff = row.optInt("goalsDiff", 0),
-                        points = row.optInt("points", 0)
-                    )
-                )
+        val extraIds = API_FOOTBALL_LEAGUE_IDS[leagueCode]
+        if (extraIds != null) {
+            val seasons = listOf(2026, 2025, 2024)
+            for (leagueId in extraIds) {
+                for (season in seasons) {
+                    val url = "https://v3.football.api-sports.io/standings?league=$leagueId&season=$season"
+                    val body = httpGetJson(url, mapOf("x-apisports-key" to API_FOOTBALL_KEY)) ?: continue
+                    val parsed = parseApiFootballStandingsRows(body)
+                    if (parsed.isNotEmpty()) {
+                        return@withContext parsed
+                    }
+                }
             }
-            return@withContext rows
+            return@withContext FALLBACK_STANDINGS_BY_LEAGUE[leagueCode].orEmpty()
         }
 
         val url = "https://api.football-data.org/v4/competitions/$leagueCode/standings"
@@ -932,6 +995,37 @@ private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRo
         }
         rows
     }
+}
+
+private fun groupMatchesByLeagueOrdered(dayMatches: List<LiveMatchItem>): List<MatchFeedListEntry> {
+    if (dayMatches.isEmpty()) return emptyList()
+
+    val grouped = dayMatches.groupBy { it.leagueCode ?: it.league }
+    val sortedKeys = grouped.keys.sortedWith { k1, k2 ->
+        val p1 = LEAGUE_ORDER_PRIORITY[k1] ?: 99
+        val p2 = LEAGUE_ORDER_PRIORITY[k2] ?: 99
+        if (p1 != p2) p1.compareTo(p2) else k1.compareTo(k2)
+    }
+
+    val entries = mutableListOf<MatchFeedListEntry>()
+    for (key in sortedKeys) {
+        val listForLeague = grouped[key].orEmpty().sortedBy { it.utcIso }
+        if (listForLeague.isEmpty()) continue
+        val sample = listForLeague.first()
+        entries.add(
+            MatchFeedListEntry.LeagueHeader(
+                leagueKey = key,
+                leagueName = sample.league,
+                leagueCode = sample.leagueCode,
+                leagueLogoUrl = sample.leagueLogoUrl,
+                matchesCount = listForLeague.size
+            )
+        )
+        listForLeague.forEach { m ->
+            entries.add(MatchFeedListEntry.MatchCard(m))
+        }
+    }
+    return entries
 }
 
 class MainActivity : ComponentActivity() {
@@ -1341,7 +1435,6 @@ fun AliKazemSportApp(
     fallbackMatches: List<LiveMatchItem>,
     accounts: List<SocialAccountItem>
 ) {
-    // يفتح التطبيق مباشرة على تبويب قنوات البث (2)
     var selectedTab by remember { mutableIntStateOf(2) }
     var isArabic by remember { mutableStateOf(true) }
     var activeCategory by remember { mutableStateOf<CategoryItem?>(null) }
@@ -1677,11 +1770,11 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
             if (manual) isRefreshing = true else if (matches.isEmpty()) isLoadingMatches = true
             val fromDate = dayOptions.first().key
             val toDate = dayOptions.last().key
-            val fetched = fetchMatchesWithoutBrazil(fromDate, toDate)
+            val fetched = fetchMatchesFiltered(fromDate, toDate)
             if (fetched.isNotEmpty()) {
                 matches = fetched
             } else if (matches.isEmpty()) {
-                matches = fallbackMatches.filter { !isBrazilianCompetition(it.league) }
+                matches = fallbackMatches.filter { !isExcludedCompetition(it.league, it.leagueCode) }
             }
             isLoadingMatches = false
             isRefreshing = false
@@ -1709,10 +1802,14 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
     val dayMatches = remember(matches, selectedDayKey) {
         matches.filter {
             it.baghdadDate == selectedDayKey &&
-                !isBrazilianCompetition(it.league) &&
-                !isBrazilianCompetition(it.homeTeam) &&
-                !isBrazilianCompetition(it.awayTeam)
+                !isExcludedCompetition(it.league, it.leagueCode) &&
+                !isExcludedCompetition(it.homeTeam) &&
+                !isExcludedCompetition(it.awayTeam)
         }
+    }
+
+    val orderedEntries = remember(dayMatches) {
+        groupMatchesByLeagueOrdered(dayMatches)
     }
 
     val selectedDayInfo = dayOptions.find { it.key == selectedDayKey } ?: dayOptions.first()
@@ -1861,7 +1958,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                 ) {
                     CircularProgressIndicator(color = ActiveGreen)
                 }
-            } else if (dayMatches.isEmpty()) {
+            } else if (orderedEntries.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1884,121 +1981,165 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(bottom = 20.dp)
                 ) {
-                    items(dayMatches, key = { it.id }) { match ->
-                        val statusBadge = remember(match, tick) {
-                            buildMatchStatusBadge(match)
+                    items(
+                        items = orderedEntries,
+                        key = { entry ->
+                            when (entry) {
+                                is MatchFeedListEntry.LeagueHeader -> "hdr_${entry.leagueKey}"
+                                is MatchFeedListEntry.MatchCard -> "m_${entry.match.id}"
+                            }
                         }
-                        val hasScore = match.homeScore != null && match.awayScore != null &&
-                            (match.status == MatchFeedStatus.LIVE ||
-                                match.status == MatchFeedStatus.HALFTIME ||
-                                match.status == MatchFeedStatus.FINISHED)
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(PanelBg)
-                                .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
+                    ) { entry ->
+                        when (entry) {
+                            is MatchFeedListEntry.LeagueHeader -> {
                                 Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 4.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(TileBg)
+                                        .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.weight(1f)
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    RemoteCrestBadge(
-                                        crestUrl = match.leagueLogoUrl,
-                                        fallbackLabel = match.league,
-                                        modifier = Modifier.size(20.dp),
-                                        leagueCode = match.leagueCode
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        RemoteCrestBadge(
+                                            crestUrl = entry.leagueLogoUrl,
+                                            fallbackLabel = entry.leagueName,
+                                            modifier = Modifier.size(22.dp),
+                                            leagueCode = entry.leagueCode
+                                        )
+                                        Text(
+                                            text = entry.leagueName,
+                                            color = ActiveGreen,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 13.sp
+                                        )
+                                    }
+
                                     Text(
-                                        text = match.league,
-                                        color = ActiveGreen,
+                                        text = "${entry.matchesCount}",
+                                        color = TextWhite,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(PanelBg)
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
                                     )
                                 }
-
-                                Text(
-                                    text = statusBadge.label,
-                                    color = if (statusBadge.isLive) Color.White else ActiveGreen,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            if (statusBadge.isLive) LiveRed else ActiveGreen.copy(alpha = 0.15f)
-                                        )
-                                        .padding(horizontal = 9.dp, vertical = 4.dp)
-                                )
                             }
 
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    RemoteCrestBadge(
-                                        crestUrl = match.homeCrestUrl,
-                                        fallbackLabel = match.homeTeam
-                                    )
-                                    Text(
-                                        text = match.homeTeam,
-                                        color = TextWhite,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                            is MatchFeedListEntry.MatchCard -> {
+                                val match = entry.match
+                                val statusBadge = remember(match, tick) {
+                                    buildMatchStatusBadge(match)
                                 }
+                                val hasScore = match.homeScore != null && match.awayScore != null &&
+                                    (match.status == MatchFeedStatus.LIVE ||
+                                        match.status == MatchFeedStatus.HALFTIME ||
+                                        match.status == MatchFeedStatus.FINISHED)
 
-                                Text(
-                                    text = if (hasScore) "${match.homeScore} - ${match.awayScore}" else match.timeText,
-                                    color = if (hasScore) ActiveGreen else TextWhite,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 13.sp,
+                                Column(
                                     modifier = Modifier
-                                        .padding(horizontal = 8.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(TileInnerBg)
-                                        .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                                )
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.weight(1f)
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(PanelBg)
+                                        .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                                        .padding(12.dp)
                                 ) {
-                                    Text(
-                                        text = match.awayTeam,
-                                        color = TextWhite,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                        textAlign = TextAlign.End,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    RemoteCrestBadge(
-                                        crestUrl = match.awayCrestUrl,
-                                        fallbackLabel = match.awayTeam
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = match.league,
+                                            color = TextMuted,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        Text(
+                                            text = statusBadge.label,
+                                            color = if (statusBadge.isLive) Color.White else ActiveGreen,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(
+                                                    if (statusBadge.isLive) LiveRed else ActiveGreen.copy(alpha = 0.15f)
+                                                )
+                                                .padding(horizontal = 9.dp, vertical = 4.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            RemoteCrestBadge(
+                                                crestUrl = match.homeCrestUrl,
+                                                fallbackLabel = match.homeTeam
+                                            )
+                                            Text(
+                                                text = match.homeTeam,
+                                                color = TextWhite,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+
+                                        Text(
+                                            text = if (hasScore) "${match.homeScore} - ${match.awayScore}" else match.timeText,
+                                            color = if (hasScore) ActiveGreen else TextWhite,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 13.sp,
+                                            modifier = Modifier
+                                                .padding(horizontal = 8.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(TileInnerBg)
+                                                .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                        )
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = match.awayTeam,
+                                                color = TextWhite,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                textAlign = TextAlign.End,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            RemoteCrestBadge(
+                                                crestUrl = match.awayCrestUrl,
+                                                fallbackLabel = match.awayTeam
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
