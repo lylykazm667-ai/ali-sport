@@ -78,7 +78,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -215,9 +214,7 @@ private val SCORER_LEAGUES = listOf(
     LeagueOption("SA", "الدوري الإيطالي"),
     LeagueOption("BL1", "الدوري الألماني"),
     LeagueOption("FL1", "الدوري الفرنسي"),
-    LeagueOption("CL", "دوري الأبطال"),
-    LeagueOption("IRQ", "الدوري العراقي"),
-    LeagueOption("SAU", "الدوري السعودي")
+    LeagueOption("CL", "دوري الأبطال")
 )
 
 private val LEAGUE_ORDER_PRIORITY: Map<String, Int> = mapOf(
@@ -513,21 +510,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "sk slovan bratislava" to "سلوفان براتيسلافا",
     "bratislava" to "سلوفان براتيسلافا"
 )
-
-private fun formatCompactViewerCount(count: Long): String {
-    val absVal = abs(count)
-    return when {
-        absVal >= 1_000_000L -> {
-            val m = count / 1_000_000L
-            "${m}M"
-        }
-        absVal >= 1_000L -> {
-            val k = count / 1_000L
-            "${k}K"
-        }
-        else -> count.toString()
-    }
-}
 
 private fun foldSpecialLatinChars(raw: String): String {
     return raw.lowercase(Locale.ROOT)
@@ -1861,7 +1843,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
     val scope = rememberCoroutineScope()
     val dayOptions = remember { buildBaghdadDays() }
 
-    var subMode by remember { mutableIntStateOf(0) } // 0 = مباريات، 1 = الترتيب، 2 = الهدافون
+    var subMode by remember { mutableIntStateOf(0) }
     var selectedDayKey by remember { mutableStateOf(dayOptions.first().key) }
     var matches by remember { mutableStateOf<List<LiveMatchItem>>(emptyList()) }
     var isLoadingMatches by remember { mutableStateOf(true) }
@@ -2669,16 +2651,6 @@ private fun FullScreenStreamPlayer(
     var showControls by remember(channel.id) { mutableStateOf(true) }
     var reloadNonce by remember(channel.id, effectiveIndex) { mutableIntStateOf(0) }
 
-    val viewerCountText = remember(channel.id) {
-        val seed = abs(channel.id.hashCode())
-        val rawViewers = when (seed % 3) {
-            0 -> 120L + (seed % 780L)
-            1 -> 1_400L + (seed % 28_000L)
-            else -> 105_000_000L + (seed % 45_000_000L)
-        }
-        formatCompactViewerCount(rawViewers)
-    }
-
     DisposableEffect(activity) {
         val window = activity?.window
         val previousOrientation =
@@ -2842,26 +2814,6 @@ private fun FullScreenStreamPlayer(
                                 )
                             }
                         }
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.DarkGray.copy(alpha = 0.85f))
-                            .padding(horizontal = 9.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "👁",
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = viewerCountText,
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
                     }
 
                     Box(
