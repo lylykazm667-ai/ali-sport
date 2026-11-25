@@ -66,8 +66,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -82,6 +82,7 @@ import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.random.Random
 
 private const val FOOTBALL_DATA_API_KEY = "b11ae4a8257e485a83389f1ef51b8df8"
 private val REGIONAL_API_FOOTBALL_KEYS = listOf(
@@ -89,11 +90,14 @@ private val REGIONAL_API_FOOTBALL_KEYS = listOf(
 )
 private const val CURRENT_SEASON = 2026
 
-// ضع هنا رابط Raw الخاص بملف channels.json من GitHub
+// رابط Raw الخاص بملف channels.json من GitHub
 private const val REMOTE_CHANNELS_JSON_URL =
-    "https://raw.githubusercontent.com/lylykazm667-ai/ali-sport/main/channels.json"
+    "https://raw.githubusercontent.com/lylykazm667-ai/ali-sport/refs/heads/main/channels.json"
 private const val CHANNELS_CACHE_PREFS = "alikazem_channels_cache"
 private const val CHANNELS_CACHE_KEY = "channels_json_v1"
+private const val MATCHES_CACHE_KEY = "matches_feed_cache_v1"
+private const val STANDINGS_CACHE_PREFIX = "standings_cache_v1_"
+private const val SCORERS_CACHE_PREFIX = "scorers_cache_v1_"
 
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
@@ -103,21 +107,44 @@ enum class MatchFeedStatus {
     SCHEDULED, LIVE, HALFTIME, FINISHED
 }
 
+enum class PlayerScaleMode(val labelAr: String) {
+    STRETCH("تمديد"),
+    FIT_16_9("16:9"),
+    FILL_ZOOM("ملء")
+}
+
+data class StreamServerOption(
+    val url: String,
+    val active: Boolean = true
+)
+
 data class ChannelItem(
     val id: String,
     val name: String,
     val url: String,
     val backupUrl: String? = null,
+    val servers: List<StreamServerOption> = emptyList(),
     val logoAssetName: String,
+    val logoUrl: String? = null,
     val badgeText: String,
     val badgeBg: Color,
     val badgeTextColor: Color = Color.White
-)
+) {
+    fun effectiveServers(): List<StreamServerOption> {
+        if (servers.isNotEmpty()) return servers
+        val list = mutableListOf(StreamServerOption(url = url, active = true))
+        if (!backupUrl.isNullOrBlank()) {
+            list.add(StreamServerOption(url = backupUrl, active = true))
+        }
+        return list
+    }
+}
 
 data class CategoryItem(
     val id: CategoryId,
     val name: String,
     val logoAssetName: String,
+    val logoUrl: String? = null,
     val badgeText: String,
     val badgeBg: Color,
     val badgeTextColor: Color = Color.White,
@@ -188,6 +215,7 @@ data class SocialAccountItem(
     val title: String,
     val url: String,
     val logoAssetName: String,
+    val logoUrl: String? = null,
     val fallbackGlyph: String,
     val badgeBg: Color,
     val badgeTextColor: Color = Color.White
@@ -694,6 +722,41 @@ private fun parseCustomStandings(obj: JSONObject?): Map<String, List<StandingRow
     return map
 }
 
+private fun parseChannelServers(
+    item: JSONObject,
+    primaryUrl: String,
+    backupUrl: String?,
+    fallbackServers: List<StreamServerOption>
+): List<StreamServerOption> {
+    val srvArr = item.optJSONArray("servers")
+    if (srvArr != null && srvArr.length() > 0) {
+        val list = mutableListOf<StreamServerOption>()
+        for (k in 0 until srvArr.length()) {
+            val sObj = srvArr.optJSONObject(k)
+            if (sObj != null) {
+                val sUrl = sObj.optString("url", "").trim()
+                if (sUrl.isBlank()) continue
+                val isActive = sObj.optBoolean("active", true) && !sObj.optBoolean("hiddenRandom", false)
+                list.add(StreamServerOption(url = sUrl, active = isActive))
+            } else {
+                val sUrl = srvArr.optString(k, "").trim()
+                if (sUrl.isNotBlank()) {
+                    list.add(StreamServerOption(url = sUrl, active = true))
+                }
+            }
+        }
+        if (list.isNotEmpty()) return list
+    }
+
+    if (fallbackServers.isNotEmpty()) return fallbackServers
+
+    val built = mutableListOf(StreamServerOption(url = primaryUrl, active = true))
+    if (!backupUrl.isNullOrBlank()) {
+        built.add(StreamServerOption(url = backupUrl, active = true))
+    }
+    return built
+}
+
 private fun parseRemoteConfigJson(jsonText: String, fallbackCategories: List<CategoryItem>): RemoteConfigData {
     return try {
         val root = JSONObject(jsonText)
@@ -720,16 +783,31 @@ private fun parseRemoteConfigJson(jsonText: String, fallbackCategories: List<Cat
             val cObj = catsArr.optJSONObject(i) ?: continue
             val catId = resolveCategoryId(cObj.optString("id", ""), i)
             val fallbackCat = fallbackById[catId]
+            val catLogoUrl = cObj.optString("logoUrl", "").trim()
+                .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                ?: fallbackCat?.logoUrl
             val chArr = cObj.optJSONArray("channels") ?: JSONArray()
             val channels = mutableListOf<ChannelItem>()
 
             for (j in 0 until chArr.length()) {
                 val item = chArr.optJSONObject(j) ?: continue
-                val url = item.optString("url", "").trim()
+                val fallbackCh = fallbackCat?.channels?.getOrNull(j)
+                val url = item.optString("url", "").trim().ifBlank { fallbackCh?.url.orEmpty() }
                 if (url.isBlank()) continue
                 val backupRaw = item.optString("backupUrl", "").trim()
-                val backup = if (backupRaw.isBlank() || backupRaw.equals("null", ignoreCase = true)) null else backupRaw
-                val fallbackCh = fallbackCat?.channels?.getOrNull(j)
+                val backup = when {
+                    backupRaw.equals("null", ignoreCase = true) -> null
+                    backupRaw.isNotBlank() -> backupRaw
+                    else -> fallbackCh?.backupUrl
+                }
+                val chLogoUrl = item.optString("logoUrl", "").trim()
+                    .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                val parsedServers = parseChannelServers(
+                    item = item,
+                    primaryUrl = url,
+                    backupUrl = backup,
+                    fallbackServers = fallbackCh?.servers.orEmpty()
+                )
 
                 channels.add(
                     ChannelItem(
@@ -737,9 +815,11 @@ private fun parseRemoteConfigJson(jsonText: String, fallbackCategories: List<Cat
                         name = item.optString("name", "").trim().ifBlank { fallbackCh?.name ?: "قناة ${j + 1}" },
                         url = url,
                         backupUrl = backup,
+                        servers = parsedServers,
                         logoAssetName = item.optString("logoAssetName", "").trim().ifBlank {
                             fallbackCh?.logoAssetName ?: (fallbackCat?.logoAssetName ?: "bein")
                         },
+                        logoUrl = chLogoUrl ?: fallbackCh?.logoUrl,
                         badgeText = item.optString("badgeText", "").trim().ifBlank {
                             fallbackCh?.badgeText ?: item.optString("name", "LIVE")
                         },
@@ -757,6 +837,7 @@ private fun parseRemoteConfigJson(jsonText: String, fallbackCategories: List<Cat
                         logoAssetName = cObj.optString("logoAssetName", "").trim().ifBlank {
                             fallbackCat?.logoAssetName ?: "bein"
                         },
+                        logoUrl = catLogoUrl,
                         badgeText = cObj.optString("badgeText", "").trim().ifBlank {
                             fallbackCat?.badgeText ?: catId.name
                         },
@@ -780,14 +861,184 @@ private fun parseRemoteConfigJson(jsonText: String, fallbackCategories: List<Cat
     }
 }
 
-private fun saveCachedChannelsJson(context: Context, jsonText: String) {
+private fun saveCachedString(context: Context, key: String, value: String) {
     val prefs = context.getSharedPreferences(CHANNELS_CACHE_PREFS, Context.MODE_PRIVATE)
-    prefs.edit().putString(CHANNELS_CACHE_KEY, jsonText).apply()
+    prefs.edit().putString(key, value).apply()
+}
+
+private fun loadCachedString(context: Context, key: String): String? {
+    val prefs = context.getSharedPreferences(CHANNELS_CACHE_PREFS, Context.MODE_PRIVATE)
+    return prefs.getString(key, null)
+}
+
+private fun saveCachedChannelsJson(context: Context, jsonText: String) {
+    saveCachedString(context, CHANNELS_CACHE_KEY, jsonText)
 }
 
 private fun loadCachedChannelsJson(context: Context): String? {
-    val prefs = context.getSharedPreferences(CHANNELS_CACHE_PREFS, Context.MODE_PRIVATE)
-    return prefs.getString(CHANNELS_CACHE_KEY, null)
+    return loadCachedString(context, CHANNELS_CACHE_KEY)
+}
+
+private fun saveMatchesCache(context: Context, list: List<LiveMatchItem>) {
+    try {
+        val arr = JSONArray()
+        list.forEach { m ->
+            arr.put(
+                JSONObject().apply {
+                    put("id", m.id)
+                    put("utcIso", m.utcIso)
+                    put("baghdadDate", m.baghdadDate)
+                    put("timeText", m.timeText)
+                    put("homeTeam", m.homeTeam)
+                    put("awayTeam", m.awayTeam)
+                    put("homeCrestUrl", m.homeCrestUrl ?: JSONObject.NULL)
+                    put("awayCrestUrl", m.awayCrestUrl ?: JSONObject.NULL)
+                    put("league", m.league)
+                    put("leagueCode", m.leagueCode ?: JSONObject.NULL)
+                    put("leagueLogoUrl", m.leagueLogoUrl ?: JSONObject.NULL)
+                    put("status", m.status.name)
+                    put("minute", m.minute ?: JSONObject.NULL)
+                    put("homeScore", m.homeScore ?: JSONObject.NULL)
+                    put("awayScore", m.awayScore ?: JSONObject.NULL)
+                }
+            )
+        }
+        saveCachedString(context, MATCHES_CACHE_KEY, arr.toString())
+    } catch (_: Exception) {
+    }
+}
+
+private fun loadMatchesCache(context: Context): List<LiveMatchItem> {
+    val raw = loadCachedString(context, MATCHES_CACHE_KEY) ?: return emptyList()
+    return try {
+        val arr = JSONArray(raw)
+        val out = mutableListOf<LiveMatchItem>()
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            val statusStr = obj.optString("status", MatchFeedStatus.SCHEDULED.name)
+            val status = try {
+                MatchFeedStatus.valueOf(statusStr)
+            } catch (_: Exception) {
+                MatchFeedStatus.SCHEDULED
+            }
+            out.add(
+                LiveMatchItem(
+                    id = obj.optString("id", "cached_$i"),
+                    utcIso = obj.optString("utcIso", ""),
+                    baghdadDate = obj.optString("baghdadDate", ""),
+                    timeText = obj.optString("timeText", ""),
+                    homeTeam = obj.optString("homeTeam", ""),
+                    awayTeam = obj.optString("awayTeam", ""),
+                    homeCrestUrl = obj.optString("homeCrestUrl", "").takeIf { it.isNotBlank() && it != "null" },
+                    awayCrestUrl = obj.optString("awayCrestUrl", "").takeIf { it.isNotBlank() && it != "null" },
+                    league = obj.optString("league", ""),
+                    leagueCode = obj.optString("leagueCode", "").takeIf { it.isNotBlank() && it != "null" },
+                    leagueLogoUrl = obj.optString("leagueLogoUrl", "").takeIf { it.isNotBlank() && it != "null" },
+                    status = status,
+                    minute = obj.optString("minute", "").takeIf { it.isNotBlank() && it != "null" },
+                    homeScore = if (obj.isNull("homeScore")) null else obj.optInt("homeScore"),
+                    awayScore = if (obj.isNull("awayScore")) null else obj.optInt("awayScore")
+                )
+            )
+        }
+        out
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
+
+private fun saveStandingsCache(context: Context, leagueCode: String, rows: List<StandingRowItem>) {
+    try {
+        val arr = JSONArray()
+        rows.forEach { r ->
+            arr.put(
+                JSONObject().apply {
+                    put("position", r.position)
+                    put("teamName", r.teamName)
+                    put("crestUrl", r.crestUrl ?: JSONObject.NULL)
+                    put("played", r.played)
+                    put("won", r.won)
+                    put("draw", r.draw)
+                    put("lost", r.lost)
+                    put("goalDiff", r.goalDiff)
+                    put("points", r.points)
+                }
+            )
+        }
+        saveCachedString(context, "$STANDINGS_CACHE_PREFIX${leagueCode.uppercase(Locale.ROOT)}", arr.toString())
+    } catch (_: Exception) {
+    }
+}
+
+private fun loadStandingsCache(context: Context, leagueCode: String): List<StandingRowItem> {
+    val raw = loadCachedString(context, "$STANDINGS_CACHE_PREFIX${leagueCode.uppercase(Locale.ROOT)}")
+        ?: return emptyList()
+    return try {
+        val arr = JSONArray(raw)
+        val out = mutableListOf<StandingRowItem>()
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            out.add(
+                StandingRowItem(
+                    position = obj.optInt("position", i + 1),
+                    teamName = obj.optString("teamName", ""),
+                    crestUrl = obj.optString("crestUrl", "").takeIf { it.isNotBlank() && it != "null" },
+                    played = obj.optInt("played", 0),
+                    won = obj.optInt("won", 0),
+                    draw = obj.optInt("draw", 0),
+                    lost = obj.optInt("lost", 0),
+                    goalDiff = obj.optInt("goalDiff", 0),
+                    points = obj.optInt("points", 0)
+                )
+            )
+        }
+        out
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
+
+private fun saveScorersCache(context: Context, leagueCode: String, rows: List<ScorerRowItem>) {
+    try {
+        val arr = JSONArray()
+        rows.forEach { r ->
+            arr.put(
+                JSONObject().apply {
+                    put("rank", r.rank)
+                    put("playerName", r.playerName)
+                    put("teamName", r.teamName)
+                    put("teamCrestUrl", r.teamCrestUrl ?: JSONObject.NULL)
+                    put("goals", r.goals)
+                }
+            )
+        }
+        saveCachedString(context, "$SCORERS_CACHE_PREFIX${leagueCode.uppercase(Locale.ROOT)}", arr.toString())
+    } catch (_: Exception) {
+    }
+}
+
+private fun loadScorersCache(context: Context, leagueCode: String): List<ScorerRowItem> {
+    val raw = loadCachedString(context, "$SCORERS_CACHE_PREFIX${leagueCode.uppercase(Locale.ROOT)}")
+        ?: return emptyList()
+    return try {
+        val arr = JSONArray(raw)
+        val out = mutableListOf<ScorerRowItem>()
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            out.add(
+                ScorerRowItem(
+                    rank = obj.optInt("rank", i + 1),
+                    playerName = obj.optString("playerName", ""),
+                    teamName = obj.optString("teamName", ""),
+                    teamCrestUrl = obj.optString("teamCrestUrl", "").takeIf { it.isNotBlank() && it != "null" },
+                    goals = obj.optInt("goals", 0)
+                )
+            )
+        }
+        out
+    } catch (_: Exception) {
+        emptyList()
+    }
 }
 
 private suspend fun fetchRemoteConfig(
@@ -849,8 +1100,8 @@ private suspend fun fetchBitmapFromUrl(urlString: String): Bitmap? {
             val url = URL(urlString)
             conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
-                connectTimeout = 9000
-                readTimeout = 9000
+                connectTimeout = 7000
+                readTimeout = 7000
                 setRequestProperty("User-Agent", "Mozilla/5.0")
             }
             if (conn.responseCode in 200..299) {
@@ -999,6 +1250,14 @@ private fun translatePlayerName(
     return translateTeamName(clean, teamOverrides)
 }
 
+private fun currentBaghdadTodayKey(): String {
+    return try {
+        LocalDate.now(ZoneId.of("Asia/Baghdad")).format(DateTimeFormatter.ISO_LOCAL_DATE)
+    } catch (_: Exception) {
+        SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date())
+    }
+}
+
 private fun buildBaghdadDays(): List<DayOption> {
     val baghdadZone = ZoneId.of("Asia/Baghdad")
     val today = LocalDate.now(baghdadZone)
@@ -1017,8 +1276,8 @@ private fun buildBaghdadDays(): List<DayOption> {
     )
     val isoFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
-    return (0..6).map { offset ->
-        val d = today.plusDays(offset.toLong())
+    return (-1L..6L).map { offset ->
+        val d = today.plusDays(offset)
         val dayName = arabicDays[d.dayOfWeek.value] ?: ""
         val monthName = arabicMonths.getOrElse(d.monthValue - 1) { "" }
         DayOption(
@@ -1035,8 +1294,8 @@ private fun httpGetJson(urlString: String, headers: Map<String, String> = emptyM
         val url = URL(urlString)
         connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
-            connectTimeout = 12000
-            readTimeout = 12000
+            connectTimeout = 8000
+            readTimeout = 8000
             headers.forEach { (k, v) -> setRequestProperty(k, v) }
         }
         if (connection.responseCode in 200..299) {
@@ -1233,8 +1492,11 @@ private suspend fun fetchMatchesFiltered(
 
                 val scoreObj = item.optJSONObject("score")
                 val fullTimeObj = scoreObj?.optJSONObject("fullTime")
+                val halfTimeObj = scoreObj?.optJSONObject("halfTime")
                 val homeScore = fullTimeObj?.opt("home")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+                    ?: halfTimeObj?.opt("home")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
                 val awayScore = fullTimeObj?.opt("away")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+                    ?: halfTimeObj?.opt("away")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
 
                 val status = parseFootballDataStatus(item.optString("status", "SCHEDULED"))
                 val minuteVal = item.opt("minute")?.takeIf { it != JSONObject.NULL }?.toString()?.takeIf { it.isNotBlank() }
@@ -1840,16 +2102,12 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        val todayStr = try {
-            LocalDate.now(ZoneId.of("Asia/Baghdad")).format(DateTimeFormatter.ISO_LOCAL_DATE)
-        } catch (_: Exception) {
-            SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date())
-        }
+        val todayStr = currentBaghdadTodayKey()
 
         val fallbackMatches = listOf(
             LiveMatchItem(
                 id = "m3",
-                utcIso = "2026-11-23T20:00:00Z",
+                utcIso = "2026-11-25T20:00:00Z",
                 baghdadDate = todayStr,
                 timeText = "23:00",
                 homeTeam = "ريال مدريد",
@@ -2054,8 +2312,14 @@ fun AliKazemSportApp(
                                     selectedChannel = selectedChannel,
                                     onBackToCategories = { activeCategoryId = null },
                                     onSelectChannel = { ch ->
+                                        val availableServers = ch.effectiveServers()
+                                        val activeIndices = availableServers.indices.filter { availableServers[it].active }
+                                        selectedServerIndex = if (activeIndices.isNotEmpty()) {
+                                            activeIndices[Random.nextInt(activeIndices.size)]
+                                        } else {
+                                            0
+                                        }
                                         selectedChannelId = ch.id
-                                        selectedServerIndex = 0
                                     }
                                 )
                             }
@@ -2209,8 +2473,11 @@ private fun MatchesAndStandingsView(
     fallbackMatches: List<LiveMatchItem>,
     remoteConfig: RemoteConfigData
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val dayOptions = remember { buildBaghdadDays() }
+    var dayTick by remember { mutableIntStateOf(0) }
+    val dayOptions = remember(dayTick) { buildBaghdadDays() }
+    val todayKey = remember(dayTick) { currentBaghdadTodayKey() }
 
     val standingLeagues = remember(remoteConfig.extraLeagues, remoteConfig.customStandings) {
         val merged = STANDING_LEAGUES.toMutableList()
@@ -2245,33 +2512,51 @@ private fun MatchesAndStandingsView(
         merged
     }
 
+    val cachedInitialMatches = remember { loadMatchesCache(context) }
+
     var subMode by remember { mutableIntStateOf(0) }
-    var selectedDayKey by remember { mutableStateOf(dayOptions.first().key) }
-    var matches by remember { mutableStateOf<List<LiveMatchItem>>(emptyList()) }
-    var isLoadingMatches by remember { mutableStateOf(true) }
+    var selectedDayKey by remember { mutableStateOf(todayKey) }
+    var lastObservedTodayKey by remember { mutableStateOf(todayKey) }
+    var matches by remember { mutableStateOf(cachedInitialMatches) }
+    var isLoadingMatches by remember { mutableStateOf(cachedInitialMatches.isEmpty()) }
     var isRefreshing by remember { mutableStateOf(false) }
 
     var selectedStandingLeague by remember { mutableStateOf(STANDING_LEAGUES.first()) }
-    var standingsRows by remember { mutableStateOf<List<StandingRowItem>>(emptyList()) }
-    var isLoadingStandings by remember { mutableStateOf(false) }
+    var standingsRows by remember {
+        mutableStateOf(loadStandingsCache(context, STANDING_LEAGUES.first().code))
+    }
+    var isLoadingStandings by remember { mutableStateOf(standingsRows.isEmpty()) }
 
     var selectedScorerLeague by remember { mutableStateOf(SCORER_LEAGUES.first()) }
-    var scorersRows by remember { mutableStateOf<List<ScorerRowItem>>(emptyList()) }
-    var isLoadingScorers by remember { mutableStateOf(false) }
+    var scorersRows by remember {
+        mutableStateOf(loadScorersCache(context, SCORER_LEAGUES.first().code))
+    }
+    var isLoadingScorers by remember { mutableStateOf(scorersRows.isEmpty()) }
 
     var tick by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(15000)
             tick++
+            val latestToday = currentBaghdadTodayKey()
+            if (latestToday != lastObservedTodayKey) {
+                lastObservedTodayKey = latestToday
+                dayTick++
+                selectedDayKey = latestToday
+            }
         }
     }
 
     fun loadMatches(manual: Boolean = false) {
         scope.launch {
-            if (manual) isRefreshing = true else if (matches.isEmpty()) isLoadingMatches = true
-            val fromDate = dayOptions.first().key
-            val toDate = dayOptions.last().key
+            if (manual) {
+                isRefreshing = true
+            } else if (matches.isEmpty()) {
+                isLoadingMatches = true
+            }
+            val daysRange = buildBaghdadDays()
+            val fromDate = daysRange.first().key
+            val toDate = daysRange.last().key
             val fetched = fetchMatchesFiltered(
                 dateFrom = fromDate,
                 dateTo = toDate,
@@ -2280,6 +2565,7 @@ private fun MatchesAndStandingsView(
             )
             if (fetched.isNotEmpty()) {
                 matches = fetched
+                saveMatchesCache(context, fetched)
             } else if (matches.isEmpty()) {
                 matches = fallbackMatches
                     .filter { !isExcludedCompetition(it.league, it.leagueCode) }
@@ -2297,24 +2583,46 @@ private fun MatchesAndStandingsView(
 
     fun loadStandings(code: String) {
         scope.launch {
-            isLoadingStandings = true
-            standingsRows = fetchStandingsForLeague(
+            val cachedRows = loadStandingsCache(context, code)
+            if (cachedRows.isNotEmpty()) {
+                standingsRows = cachedRows
+                isLoadingStandings = false
+            } else {
+                standingsRows = emptyList()
+                isLoadingStandings = true
+            }
+            val fetched = fetchStandingsForLeague(
                 leagueCode = code,
                 teamOverrides = remoteConfig.teamOverrides,
                 customStandings = remoteConfig.customStandings
             )
+            if (fetched.isNotEmpty()) {
+                standingsRows = fetched
+                saveStandingsCache(context, code, fetched)
+            }
             isLoadingStandings = false
         }
     }
 
     fun loadScorers(code: String) {
         scope.launch {
-            isLoadingScorers = true
-            scorersRows = fetchTopScorersForLeague(
+            val cachedRows = loadScorersCache(context, code)
+            if (cachedRows.isNotEmpty()) {
+                scorersRows = cachedRows
+                isLoadingScorers = false
+            } else {
+                scorersRows = emptyList()
+                isLoadingScorers = true
+            }
+            val fetched = fetchTopScorersForLeague(
                 leagueCode = code,
                 playerOverrides = remoteConfig.playerOverrides,
                 teamOverrides = remoteConfig.teamOverrides
             )
+            if (fetched.isNotEmpty()) {
+                scorersRows = fetched
+                saveScorersCache(context, code, fetched)
+            }
             isLoadingScorers = false
         }
     }
@@ -2353,7 +2661,9 @@ private fun MatchesAndStandingsView(
         groupMatchesByLeagueOrdered(dayMatches, remoteConfig.extraLeagues)
     }
 
-    val selectedDayInfo = dayOptions.find { it.key == selectedDayKey } ?: dayOptions.first()
+    val selectedDayInfo = dayOptions.find { it.key == selectedDayKey }
+        ?: dayOptions.find { it.key == todayKey }
+        ?: dayOptions.first()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -2597,10 +2907,19 @@ private fun MatchesAndStandingsView(
                                     val statusBadge = remember(match, tick) {
                                         buildMatchStatusBadge(match)
                                     }
-                                    val hasScore = match.homeScore != null && match.awayScore != null &&
-                                        (match.status == MatchFeedStatus.LIVE ||
-                                            match.status == MatchFeedStatus.HALFTIME ||
-                                            match.status == MatchFeedStatus.FINISHED)
+                                    val isStartedOrFinished = match.status == MatchFeedStatus.LIVE ||
+                                        match.status == MatchFeedStatus.HALFTIME ||
+                                        match.status == MatchFeedStatus.FINISHED ||
+                                        statusBadge.isLive ||
+                                        statusBadge.label == "انتهت"
+
+                                    val homeNum = match.homeScore ?: 0
+                                    val awayNum = match.awayScore ?: 0
+                                    val centerDisplay = if (isStartedOrFinished) {
+                                        "$homeNum - $awayNum"
+                                    } else {
+                                        match.timeText
+                                    }
 
                                     Column(
                                         modifier = Modifier
@@ -2665,8 +2984,8 @@ private fun MatchesAndStandingsView(
                                             }
 
                                             Text(
-                                                text = if (hasScore) "${match.homeScore} - ${match.awayScore}" else match.timeText,
-                                                color = if (hasScore) ActiveGreen else TextWhite,
+                                                text = centerDisplay,
+                                                color = if (isStartedOrFinished) ActiveGreen else TextWhite,
                                                 fontWeight = FontWeight.ExtraBold,
                                                 fontSize = 13.sp,
                                                 modifier = Modifier
@@ -2743,7 +3062,7 @@ private fun MatchesAndStandingsView(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                if (isLoadingStandings) {
+                if (isLoadingStandings && standingsRows.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2885,7 +3204,7 @@ private fun MatchesAndStandingsView(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                if (isLoadingScorers) {
+                if (isLoadingScorers && scorersRows.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2999,23 +3318,34 @@ private data class StatusBadgeUi(
     val isLive: Boolean
 )
 
+private fun formatMinuteLabel(rawMinute: String?): String? {
+    val clean = rawMinute?.trim().orEmpty()
+    if (clean.isBlank()) return null
+    return if (clean.endsWith("'")) clean else "$clean'"
+}
+
 private fun buildMatchStatusBadge(match: LiveMatchItem): StatusBadgeUi {
+    val kickMs = try {
+        Instant.parse(match.utcIso).toEpochMilli()
+    } catch (_: Exception) {
+        0L
+    }
+    val elapsedMin = if (kickMs > 0L) ((System.currentTimeMillis() - kickMs) / 60000L) else -1L
+
     return when (match.status) {
         MatchFeedStatus.FINISHED -> StatusBadgeUi("انتهت", isLive = false)
-        MatchFeedStatus.HALFTIME -> StatusBadgeUi("بين الشوطين", isLive = true)
+        MatchFeedStatus.HALFTIME -> StatusBadgeUi("استراحة", isLive = true)
         MatchFeedStatus.LIVE -> {
-            val minTxt = if (!match.minute.isNullOrBlank()) "${match.minute}'" else "مباشر"
-            StatusBadgeUi(minTxt, isLive = true)
+            val formattedMin = formatMinuteLabel(match.minute)
+                ?: if (elapsedMin in 0..130) "$elapsedMin'" else "مباشر"
+            StatusBadgeUi(formattedMin, isLive = true)
         }
         MatchFeedStatus.SCHEDULED -> {
-            val kickMs = try {
-                Instant.parse(match.utcIso).toEpochMilli()
-            } catch (_: Exception) {
-                0L
-            }
-            val elapsedMin = if (kickMs > 0L) ((System.currentTimeMillis() - kickMs) / 60000L) else -1L
             if (elapsedMin in 0..120) {
-                StatusBadgeUi("$elapsedMin'", isLive = true)
+                val formattedMin = formatMinuteLabel(match.minute) ?: "$elapsedMin'"
+                StatusBadgeUi(formattedMin, isLive = true)
+            } else if (elapsedMin > 120) {
+                StatusBadgeUi("انتهت", isLive = false)
             } else {
                 StatusBadgeUi(match.timeText, isLive = false)
             }
@@ -3067,16 +3397,16 @@ private fun FullScreenStreamPlayer(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
-    val hasBackup = !channel.backupUrl.isNullOrBlank()
-    val effectiveIndex = if (selectedServerIndex == 1 && hasBackup) 1 else 0
-    val activeUrl = if (effectiveIndex == 1 && channel.backupUrl != null) {
-        channel.backupUrl
-    } else {
-        channel.url
+    val serverOptions = remember(channel.id, channel.url, channel.backupUrl, channel.servers) {
+        channel.effectiveServers()
     }
+    val safeIndex = selectedServerIndex.coerceIn(0, (serverOptions.size - 1).coerceAtLeast(0))
+    val activeUrl = serverOptions.getOrNull(safeIndex)?.url ?: channel.url
 
     var showControls by remember(channel.id) { mutableStateOf(true) }
-    var reloadNonce by remember(channel.id, effectiveIndex) { mutableIntStateOf(0) }
+    var reloadNonce by remember(channel.id, safeIndex) { mutableIntStateOf(0) }
+    var isMuted by remember(channel.id) { mutableStateOf(false) }
+    var scaleMode by remember(channel.id) { mutableStateOf(PlayerScaleMode.STRETCH) }
 
     DisposableEffect(activity) {
         val window = activity?.window
@@ -3131,27 +3461,47 @@ private fun FullScreenStreamPlayer(
             .build()
             .apply {
                 setMediaItem(MediaItem.fromUri(activeUrl))
+                volume = if (isMuted) 0f else 1f
                 prepare()
                 playWhenReady = true
             }
     }
 
-    DisposableEffect(exoPlayer) {
-        var autoRetryCount = 0
+    LaunchedEffect(exoPlayer, isMuted) {
+        exoPlayer.volume = if (isMuted) 0f else 1f
+    }
+
+    DisposableEffect(exoPlayer, safeIndex, serverOptions) {
+        var sameServerRetryCount = 0
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
-                if (autoRetryCount < 3) {
-                    autoRetryCount++
+                if (sameServerRetryCount < 1) {
+                    sameServerRetryCount++
                     exoPlayer.stop()
                     exoPlayer.setMediaItem(MediaItem.fromUri(activeUrl))
                     exoPlayer.prepare()
                     exoPlayer.playWhenReady = true
+                } else {
+                    val activeCandidates = serverOptions.indices.filter { idx ->
+                        idx != safeIndex && serverOptions[idx].active
+                    }
+                    if (activeCandidates.isNotEmpty()) {
+                        val nextIdx = activeCandidates.firstOrNull { it > safeIndex }
+                            ?: activeCandidates.first()
+                        onSelectServer(nextIdx)
+                    } else {
+                        sameServerRetryCount = 0
+                        exoPlayer.stop()
+                        exoPlayer.setMediaItem(MediaItem.fromUri(activeUrl))
+                        exoPlayer.prepare()
+                        exoPlayer.playWhenReady = true
+                    }
                 }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) {
-                    autoRetryCount = 0
+                    sameServerRetryCount = 0
                 } else if (playbackState == Player.STATE_ENDED) {
                     exoPlayer.seekToDefaultPosition()
                     exoPlayer.prepare()
@@ -3166,6 +3516,12 @@ private fun FullScreenStreamPlayer(
         }
     }
 
+    val resizeModeValue = when (scaleMode) {
+        PlayerScaleMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+        PlayerScaleMode.FIT_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+        PlayerScaleMode.FILL_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -3177,12 +3533,18 @@ private fun FullScreenStreamPlayer(
                 PlayerView(ctx).apply {
                     player = exoPlayer
                     useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    resizeMode = resizeModeValue
+                    if (scaleMode == PlayerScaleMode.FIT_16_9) {
+                        setAspectRatio(16f / 9f)
+                    }
                 }
             },
             update = { playerView ->
                 playerView.player = exoPlayer
-                playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                playerView.resizeMode = resizeModeValue
+                if (scaleMode == PlayerScaleMode.FIT_16_9) {
+                    playerView.setAspectRatio(16f / 9f)
+                }
             },
             modifier = Modifier.fillMaxSize()
         )
@@ -3199,48 +3561,73 @@ private fun FullScreenStreamPlayer(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (hasBackup) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (effectiveIndex == 0) ActiveGreen
-                                        else Color.DarkGray.copy(alpha = 0.85f)
+                    if (serverOptions.size > 1) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            serverOptions.forEachIndexed { idx, srv ->
+                                val isCurrent = safeIndex == idx
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            when {
+                                                isCurrent -> ActiveGreen
+                                                !srv.active -> Color.DarkGray.copy(alpha = 0.45f)
+                                                else -> Color.DarkGray.copy(alpha = 0.85f)
+                                            }
+                                        )
+                                        .clickable { onSelectServer(idx) }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${idx + 1}",
+                                        color = if (srv.active || isCurrent) Color.White else TextMuted,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
-                                    .clickable { onSelectServer(0) }
-                                    .padding(horizontal = 11.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "1",
-                                    color = Color.White,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (effectiveIndex == 1) ActiveGreen
-                                        else Color.DarkGray.copy(alpha = 0.85f)
-                                    )
-                                    .clickable { onSelectServer(1) }
-                                    .padding(horizontal = 11.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "2",
-                                    color = Color.White,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                }
                             }
                         }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isMuted) LiveRed.copy(alpha = 0.85f) else Color.DarkGray.copy(alpha = 0.85f))
+                            .clickable { isMuted = !isMuted }
+                            .padding(horizontal = 9.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isMuted) "صامت" else "صوت",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.DarkGray.copy(alpha = 0.85f))
+                            .clickable {
+                                scaleMode = when (scaleMode) {
+                                    PlayerScaleMode.STRETCH -> PlayerScaleMode.FIT_16_9
+                                    PlayerScaleMode.FIT_16_9 -> PlayerScaleMode.FILL_ZOOM
+                                    PlayerScaleMode.FILL_ZOOM -> PlayerScaleMode.STRETCH
+                                }
+                            }
+                            .padding(horizontal = 9.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = scaleMode.labelAr,
+                            color = ActiveGreen,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
 
                     Box(
@@ -3338,6 +3725,7 @@ private fun CategoryGridCard(
         ) {
             ChannelOrCategoryArtwork(
                 assetName = category.logoAssetName,
+                imageUrl = category.logoUrl,
                 contentDescription = category.name,
                 badgeText = category.badgeText,
                 badgeBg = category.badgeBg,
@@ -3432,6 +3820,7 @@ private fun CategoryChannelsListView(
                         ) {
                             ChannelOrCategoryArtwork(
                                 assetName = channel.logoAssetName,
+                                imageUrl = channel.logoUrl,
                                 contentDescription = channel.name,
                                 badgeText = channel.name.take(2).uppercase(),
                                 badgeBg = TileInnerBg,
@@ -3507,6 +3896,7 @@ private fun AccountsTabView(accounts: List<SocialAccountItem>) {
                         ) {
                             ChannelOrCategoryArtwork(
                                 assetName = acc.logoAssetName,
+                                imageUrl = acc.logoUrl,
                                 contentDescription = acc.title,
                                 badgeText = acc.fallbackGlyph,
                                 badgeBg = acc.badgeBg,
@@ -3550,8 +3940,20 @@ private fun ChannelOrCategoryArtwork(
     badgeText: String,
     badgeBg: Color,
     badgeTextColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    imageUrl: String? = null
 ) {
+    val cleanUrl = imageUrl?.trim()?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+    var remoteBitmap by remember(cleanUrl) {
+        mutableStateOf(cleanUrl?.let { CrestMemoryCache.get(it) })
+    }
+
+    LaunchedEffect(cleanUrl) {
+        if (remoteBitmap == null && !cleanUrl.isNullOrBlank()) {
+            remoteBitmap = fetchBitmapFromUrl(cleanUrl)
+        }
+    }
+
     val drawableId = rememberDrawableId(assetName)
     Box(
         modifier = modifier
@@ -3561,7 +3963,17 @@ private fun ChannelOrCategoryArtwork(
             .background(TileInnerBg),
         contentAlignment = Alignment.Center
     ) {
-        if (drawableId != 0) {
+        val loadedRemote = remoteBitmap
+        if (loadedRemote != null) {
+            Image(
+                bitmap = loadedRemote.asImageBitmap(),
+                contentDescription = contentDescription,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+            )
+        } else if (drawableId != 0) {
             Image(
                 painter = painterResource(id = drawableId),
                 contentDescription = contentDescription,
