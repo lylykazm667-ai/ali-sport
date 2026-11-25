@@ -1,0 +1,325 @@
+{
+  "version": 2,
+  "teamOverrides": {
+    "manchester united": "مانشستر يونايتد",
+    "real madrid": "ريال مدريد"
+  },
+  "playerOverrides": {
+    "kylian mbappe": "كيليان مبابي",
+    "mohamed salah": "محمد صلاح"
+  },
+  "extraLeagues": [
+    {
+      "code": "IRAQ_SL",
+      "shortLabel": "دوري النجوم",
+      "name": "دوري نجوم العراق",
+      "logoUrl": "https://media.api-sports.io/football/leagues/542.png",
+      "priority": 7
+    }
+  ],
+  "customStandings": {
+    "IRAQ_SL": [
+      {
+        "position": 1,
+        "teamName": "الشرطة",
+        "crestUrl": "",
+        "played": 10,
+        "won": 8,
+        "draw": 1,
+        "lost": 1,
+        "goalDiff": 14,
+        "points": 25
+      }
+    ]
+  },
+  "categories": [
+    {
+      "id": "BEIN",
+      "name": "bein sport",
+      "logoAssetName": "bein",
+      "badgeText": "beIN\nSPORTS",
+      "channels": [
+        {
+          "id": "bein-1",
+          "name": "bein sport 1",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153582",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7256",
+          "logoAssetName": "bs1",
+          "badgeText": "beIN 1"
+        },
+        {
+          "id": "bein-2",
+          "name": "bein sport 2",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153583",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/55414",
+          "logoAssetName": "bs2",
+          "badgeText": "beIN 2"
+        },
+        {
+          "id": "bein-3",
+          "name": "bein sport 3",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153584",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/64692",
+          "logoAssetName": "bs3",
+          "badgeText": "beIN 3"
+        },
+        {
+          "id": "bein-4",
+          "name": "bein sport 4",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7754",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7262",
+          "logoAssetName": "bs4",
+          "badgeText": "beIN 4"
+        },
+        {
+          "id": "bein-5",
+          "name": "bein sport 5",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153587",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7261",
+          "logoAssetName": "bs5",
+          "badgeText": "beIN 5"
+        },
+        {
+          "id": "bein-6",
+          "name": "bein sport 6",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153588",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7260",
+          "logoAssetName": "bs6",
+          "badgeText": "beIN 6"
+        },
+        {
+          "id": "bein-7",
+          "name": "bein sport 7",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153589",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7259",
+          "logoAssetName": "bs7",
+          "badgeText": "beIN 7"
+        },
+        {
+          "id": "bein-8",
+          "name": "bein sport 8",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153590",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7258",
+          "logoAssetName": "bs8",
+          "badgeText": "beIN 8"
+        },
+        {
+          "id": "bein-9",
+          "name": "bein sport 9",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/153591",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/7257",
+          "logoAssetName": "bs9",
+          "badgeText": "beIN 9"
+        },
+        {
+          "id": "bein-10",
+          "name": "bein sport",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237786",
+          "backupUrl": null,
+          "logoAssetName": "bs10",
+          "badgeText": "beIN HD"
+        },
+        {
+          "id": "bein-news",
+          "name": "bein sport news",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102546",
+          "backupUrl": null,
+          "logoAssetName": "bs11",
+          "badgeText": "beIN NEWS"
+        }
+      ]
+    },
+    {
+      "id": "ALWAN",
+      "name": "Alwan Sport",
+      "logoAssetName": "alwan",
+      "badgeText": "ALWAN\nSPORT",
+      "channels": [
+        {
+          "id": "alwan-1",
+          "name": "Alwan Sport 1",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237015",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237016",
+          "logoAssetName": "alw1",
+          "badgeText": "ALWAN 1"
+        },
+        {
+          "id": "alwan-2",
+          "name": "Alwan Sport 2",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237018",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237019",
+          "logoAssetName": "alw2",
+          "badgeText": "ALWAN 2"
+        },
+        {
+          "id": "alwan-3",
+          "name": "Alwan Sport 3",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237021",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237022",
+          "logoAssetName": "alw3",
+          "badgeText": "ALWAN 3"
+        },
+        {
+          "id": "alwan-4",
+          "name": "Alwan Sport 4",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237024",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237025",
+          "logoAssetName": "alw4",
+          "badgeText": "ALWAN 4"
+        },
+        {
+          "id": "alwan-5",
+          "name": "Alwan Sport 5",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237027",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237028",
+          "logoAssetName": "alw5",
+          "badgeText": "ALWAN 5"
+        },
+        {
+          "id": "alwan-6",
+          "name": "Alwan Sport 6",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
+          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
+          "logoAssetName": "alw6",
+          "badgeText": "ALWAN 6"
+        }
+      ]
+    },
+    {
+      "id": "ALKASS",
+      "name": "Alkass Sport",
+      "logoAssetName": "alkass",
+      "badgeText": "┐",
+      "channels": [
+        {
+          "id": "alkass-1",
+          "name": "Alkass Sport 1",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102199",
+          "backupUrl": null,
+          "logoAssetName": "alk1",
+          "badgeText": "الكأس 1"
+        },
+        {
+          "id": "alkass-2",
+          "name": "Alkass Sport 2",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102200",
+          "backupUrl": null,
+          "logoAssetName": "alk2",
+          "badgeText": "الكأس 2"
+        },
+        {
+          "id": "alkass-3",
+          "name": "Alkass Sport 3",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102201",
+          "backupUrl": null,
+          "logoAssetName": "alk3",
+          "badgeText": "الكأس 3"
+        },
+        {
+          "id": "alkass-4",
+          "name": "Alkass Sport 4",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102202",
+          "backupUrl": null,
+          "logoAssetName": "alk4",
+          "badgeText": "الكأس 4"
+        },
+        {
+          "id": "alkass-5",
+          "name": "Alkass Sport 5",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/102203",
+          "backupUrl": null,
+          "logoAssetName": "alk5",
+          "badgeText": "الكأس 5"
+        },
+        {
+          "id": "alkass-6",
+          "name": "Alkass Sport 6",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/164857",
+          "backupUrl": null,
+          "logoAssetName": "alk6",
+          "badgeText": "الكأس 6"
+        },
+        {
+          "id": "alkass-7",
+          "name": "Alkass Sport 7",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/164857",
+          "backupUrl": null,
+          "logoAssetName": "alk7",
+          "badgeText": "الكأس 7"
+        }
+      ]
+    },
+    {
+      "id": "ABUDHABI",
+      "name": "Abu Dhabi Sports",
+      "logoAssetName": "abudhabi",
+      "badgeText": "أبوظبي الرياضية",
+      "channels": [
+        {
+          "id": "ad-1",
+          "name": "Abu Dhabi Sports 1",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/3341",
+          "backupUrl": null,
+          "logoAssetName": "ad1",
+          "badgeText": "أبوظبي 1"
+        },
+        {
+          "id": "ad-2",
+          "name": "Abu Dhabi Sports 2",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/3340",
+          "backupUrl": null,
+          "logoAssetName": "ad2",
+          "badgeText": "أبوظبي 2"
+        },
+        {
+          "id": "adb-1",
+          "name": "Abu Dhabi Premium 1",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/177284",
+          "backupUrl": null,
+          "logoAssetName": "adb1",
+          "badgeText": "AD Prem 1"
+        },
+        {
+          "id": "adb-2",
+          "name": "Abu Dhabi Premium 2",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/177286",
+          "backupUrl": null,
+          "logoAssetName": "adb2",
+          "badgeText": "AD Prem 2"
+        }
+      ]
+    },
+    {
+      "id": "THMANYAH",
+      "name": "Thmanyah Sports",
+      "logoAssetName": "thmanyah",
+      "badgeText": "▲",
+      "channels": [
+        {
+          "id": "thmanyah-1",
+          "name": "Thmanyah 1",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236891",
+          "backupUrl": null,
+          "logoAssetName": "thmanyah",
+          "badgeText": "▲ 1"
+        },
+        {
+          "id": "thmanyah-2",
+          "name": "Thmanyah 2",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236892",
+          "backupUrl": null,
+          "logoAssetName": "thmanyah",
+          "badgeText": "▲ 2"
+        },
+        {
+          "id": "thmanyah-3",
+          "name": "Thmanyah 3",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236893",
+          "backupUrl": null,
+          "logoAssetName": "thmanyah",
+          "badgeText": "▲ 3"
+        }
+      ]
+    }
+  ]
+}
