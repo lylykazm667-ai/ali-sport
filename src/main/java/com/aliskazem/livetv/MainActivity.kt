@@ -3518,7 +3518,7 @@ private fun FullScreenStreamPlayer(
 
     val resizeModeValue = when (scaleMode) {
         PlayerScaleMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-        PlayerScaleMode.FIT_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+        PlayerScaleMode.FIT_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
         PlayerScaleMode.FILL_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
     }
 
@@ -3526,27 +3526,30 @@ private fun FullScreenStreamPlayer(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable { showControls = !showControls }
+            .clickable { showControls = !showControls },
+        contentAlignment = Alignment.Center
     ) {
+        val playerModifier = if (scaleMode == PlayerScaleMode.FIT_16_9) {
+            Modifier
+                .fillMaxHeight()
+                .aspectRatio(16f / 9f)
+        } else {
+            Modifier.fillMaxSize()
+        }
+
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     player = exoPlayer
                     useController = false
                     resizeMode = resizeModeValue
-                    if (scaleMode == PlayerScaleMode.FIT_16_9) {
-                        setAspectRatio(16f / 9f)
-                    }
                 }
             },
             update = { playerView ->
                 playerView.player = exoPlayer
                 playerView.resizeMode = resizeModeValue
-                if (scaleMode == PlayerScaleMode.FIT_16_9) {
-                    playerView.setAspectRatio(16f / 9f)
-                }
             },
-            modifier = Modifier.fillMaxSize()
+            modifier = playerModifier
         )
 
         if (showControls) {
