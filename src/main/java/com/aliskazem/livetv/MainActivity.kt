@@ -6,9 +6,12 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.PixelFormat
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.view.Gravity
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,11 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.OpenInFull
-import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,13 +46,13 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +60,13 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -69,6 +75,10 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -103,9 +113,9 @@ private const val REMOTE_CHANNELS_JSON_URL =
 private const val CHANNELS_CACHE_PREFS = "alikazem_channels_cache"
 private const val CHANNELS_CACHE_KEY = "channels_json_v1"
 private const val MATCHES_CACHE_KEY = "matches_feed_cache_v1"
-private const val STANDINGS_CACHE_PREFIX = "standings_cache_v2_"
-private const val SCORERS_CACHE_PREFIX = "scorers_cache_v2_"
-private const val ASSISTS_CACHE_PREFIX = "assists_cache_v1_"
+private const val STANDINGS_CACHE_PREFIX = "standings_cache_v4_"
+private const val SCORERS_CACHE_PREFIX = "scorers_cache_v3_"
+private const val ASSISTS_CACHE_PREFIX = "assists_cache_v2_"
 
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
@@ -117,8 +127,7 @@ enum class MatchFeedStatus {
 
 enum class PlayerScaleMode(val labelAr: String) {
     STRETCH("تمديد"),
-    FIT_16_9("16:9"),
-    FILL_ZOOM("ملء")
+    FIT_16_9("16:9")
 }
 
 data class StreamServerOption(
@@ -186,6 +195,7 @@ data class StandingRowItem(
     val draw: Int,
     val lost: Int,
     val goalsFor: Int = 0,
+    val goalsAgainst: Int = 0,
     val goalDiff: Int,
     val points: Int
 )
@@ -328,6 +338,36 @@ private val SOCIAL_ACCOUNTS = listOf(
         badgeBg = Color(0xFF1D9BF0),
         badgeTextColor = Color.White
     )
+)
+
+private val PLAYER_ARABIC_NAMES: Map<String, String> = mapOf(
+    "lamine yamal" to "لامين يمال",
+    "lamine yamal nasraoui ebana" to "لامين يمال",
+    "yamal" to "لامين يمال",
+    "لاميني يامال" to "لامين يمال",
+    "ousmane dembele" to "عثمان دمبيلي",
+    "dembele" to "عثمان دمبيلي",
+    "ووسماني ديمبيلي" to "عثمان دمبيلي",
+    "عثمان ديمبيلي" to "عثمان دمبيلي",
+    "harry kane" to "هاري كاين",
+    "kane" to "هاري كاين",
+    "هارري كاني" to "هاري كاين",
+    "هاري كين" to "هاري كاين",
+    "erling haaland" to "إيرلينغ هالاند",
+    "haaland" to "إيرلينغ هالاند",
+    "يرلينغ هاالاند" to "إيرلينغ هالاند",
+    "يرلينغ هالاند" to "إيرلينغ هالاند",
+    "alexander isak" to "ألكسندر إيزاك",
+    "isak" to "ألكسندر إيزاك",
+    "اليكساندير يساك" to "ألكسندر إيزاك",
+    "اليكساندر ايزاك" to "ألكسندر إيزاك",
+    "thierno barry" to "ثيرنو باري",
+    "barry" to "ثيرنو باري",
+    "ثييرنو بارري" to "ثيرنو باري",
+    "ثيرنو بارري" to "ثيرنو باري",
+    "nicolas jackson" to "نيكولاس جاكسون",
+    "jackson" to "نيكولاس جاكسون",
+    "نيكولاس جاككسون" to "نيكولاس جاكسون"
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
@@ -665,6 +705,7 @@ private fun parseExtraLeagues(arr: JSONArray?): List<ExtraLeagueConfig> {
         val code = obj.optString("code", "").trim().uppercase(Locale.ROOT)
         val name = obj.optString("name", "").trim()
         if (code.isBlank() || name.isBlank() || code == "IRQ") continue
+        if (isExcludedCompetition(name, code)) continue
         val shortLabel = obj.optString("shortLabel", "").trim().ifBlank { name }
         val logoUrl = obj.optString("logoUrl", "").trim().takeIf { it.isNotBlank() && it != "null" }
         val priority = obj.optInt("priority", 50)
@@ -688,7 +729,7 @@ private fun parseCustomStandings(obj: JSONObject?): Map<String, List<StandingRow
     while (keys.hasNext()) {
         val rawCode = keys.next()
         val code = rawCode.trim().uppercase(Locale.ROOT)
-        if (code == "IRQ") continue
+        if (code == "IRQ" || isExcludedCompetition(code, code)) continue
         val rowsArr = obj.optJSONArray(rawCode) ?: continue
         val rows = mutableListOf<StandingRowItem>()
         for (i in 0 until rowsArr.length()) {
@@ -707,6 +748,11 @@ private fun parseCustomStandings(obj: JSONObject?): Map<String, List<StandingRow
                 val against = rObj.optInt("goalsAgainst", 0)
                 if (against > 0 || goalDiff != 0) (against + goalDiff).coerceAtLeast(0) else 0
             }
+            val goalsAgainst = if (rObj.has("goalsAgainst")) {
+                rObj.optInt("goalsAgainst", 0)
+            } else {
+                (goalsFor - goalDiff).coerceAtLeast(0)
+            }
             rows.add(
                 StandingRowItem(
                     position = rObj.optInt("position", i + 1),
@@ -717,6 +763,7 @@ private fun parseCustomStandings(obj: JSONObject?): Map<String, List<StandingRow
                     draw = draw,
                     lost = lost,
                     goalsFor = goalsFor,
+                    goalsAgainst = goalsAgainst,
                     goalDiff = goalDiff,
                     points = rObj.optInt("points", 0)
                 )
@@ -971,6 +1018,7 @@ private fun saveStandingsCache(context: Context, leagueCode: String, rows: List<
                     put("draw", r.draw)
                     put("lost", r.lost)
                     put("goalsFor", r.goalsFor)
+                    put("goalsAgainst", r.goalsAgainst)
                     put("goalDiff", r.goalDiff)
                     put("points", r.points)
                 }
@@ -982,13 +1030,22 @@ private fun saveStandingsCache(context: Context, leagueCode: String, rows: List<
 }
 
 private fun loadStandingsCache(context: Context, leagueCode: String): List<StandingRowItem> {
-    val raw = loadCachedString(context, "$STANDINGS_CACHE_PREFIX${leagueCode.uppercase(Locale.ROOT)}")
+    val cleanCode = leagueCode.trim().uppercase(Locale.ROOT)
+    if (cleanCode == "IRQ" || isExcludedCompetition(cleanCode, cleanCode)) return emptyList()
+    val raw = loadCachedString(context, "$STANDINGS_CACHE_PREFIX$cleanCode")
         ?: return emptyList()
     return try {
         val arr = JSONArray(raw)
         val out = mutableListOf<StandingRowItem>()
         for (i in 0 until arr.length()) {
             val obj = arr.optJSONObject(i) ?: continue
+            val goalsFor = obj.optInt("goalsFor", 0)
+            val goalDiff = obj.optInt("goalDiff", 0)
+            val goalsAgainst = if (obj.has("goalsAgainst")) {
+                obj.optInt("goalsAgainst", 0)
+            } else {
+                (goalsFor - goalDiff).coerceAtLeast(0)
+            }
             out.add(
                 StandingRowItem(
                     position = obj.optInt("position", i + 1),
@@ -998,8 +1055,9 @@ private fun loadStandingsCache(context: Context, leagueCode: String): List<Stand
                     won = obj.optInt("won", 0),
                     draw = obj.optInt("draw", 0),
                     lost = obj.optInt("lost", 0),
-                    goalsFor = obj.optInt("goalsFor", 0),
-                    goalDiff = obj.optInt("goalDiff", 0),
+                    goalsFor = goalsFor,
+                    goalsAgainst = goalsAgainst,
+                    goalDiff = goalDiff,
                     points = obj.optInt("points", 0)
                 )
             )
@@ -1309,8 +1367,12 @@ private fun translatePlayerName(
     if (clean.isBlank()) return "لاعب"
     val folded = foldSpecialLatinChars(clean)
     playerOverrides[folded]?.let { return it }
+    PLAYER_ARABIC_NAMES[folded]?.let { return it }
+
     val normalized = normalizeTeamLookupKey(clean)
     playerOverrides[normalized]?.let { return it }
+    PLAYER_ARABIC_NAMES[normalized]?.let { return it }
+
     return translateTeamName(clean, teamOverrides)
 }
 
@@ -1626,6 +1688,7 @@ private suspend fun fetchStandingsForLeague(
     return withContext(Dispatchers.IO) {
         val url = "https://api.football-data.org/v4/competitions/$cleanCode/standings"
         val body = httpGetJson(url, mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY))
+
         if (body.isNullOrBlank()) {
             return@withContext customRows.orEmpty()
         }
@@ -1658,6 +1721,11 @@ private suspend fun fetchStandingsForLeague(
             }
             val goalsFor = row.optInt("goalsFor", 0)
             val goalDiff = row.optInt("goalDifference", 0)
+            val goalsAgainst = if (row.has("goalsAgainst")) {
+                row.optInt("goalsAgainst", 0)
+            } else {
+                (goalsFor - goalDiff).coerceAtLeast(0)
+            }
 
             rows.add(
                 StandingRowItem(
@@ -1669,6 +1737,7 @@ private suspend fun fetchStandingsForLeague(
                     draw = row.optInt("draw", 0),
                     lost = row.optInt("lost", 0),
                     goalsFor = goalsFor,
+                    goalsAgainst = goalsAgainst,
                     goalDiff = goalDiff,
                     points = row.optInt("points", 0)
                 )
@@ -1693,6 +1762,7 @@ private suspend fun fetchStandingsForLeague(
                         draw = ov.draw,
                         lost = ov.lost,
                         goalsFor = ov.goalsFor,
+                        goalsAgainst = ov.goalsAgainst,
                         goalDiff = ov.goalDiff,
                         points = ov.points
                     )
@@ -1898,6 +1968,214 @@ private fun groupMatchesByLeagueOrdered(
         }
     }
     return entries
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+private class SystemOverlayPipManager(
+    private val context: Context,
+    private val exoPlayer: ExoPlayer,
+    private val onExpandToApp: (ChannelItem) -> Unit,
+    private val onCloseOverlay: () -> Unit
+) : LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
+
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    private val store = ViewModelStore()
+    private val savedStateRegistryController = SavedStateRegistryController.create(this)
+
+    private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private var overlayView: ComposeView? = null
+    private var layoutParams: WindowManager.LayoutParams? = null
+    private var currentChannel by mutableStateOf<ChannelItem?>(null)
+
+    init {
+        savedStateRegistryController.performRestore(null)
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
+    }
+
+    override val lifecycle: Lifecycle
+        get() = lifecycleRegistry
+
+    override val viewModelStore: ViewModelStore
+        get() = store
+
+    override val savedStateRegistry: SavedStateRegistry
+        get() = savedStateRegistryController.savedStateRegistry
+
+    fun hasOverlayPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)
+    }
+
+    fun requestOverlayPermission(activity: Activity?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${context.packageName}")
+            ).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            activity?.startActivity(intent) ?: context.startActivity(intent)
+        }
+    }
+
+    fun show(channel: ChannelItem) {
+        currentChannel = channel
+        if (overlayView != null) {
+            return
+        }
+        val typeFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            typeFlag,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 40
+            y = 220
+        }
+
+        val view = ComposeView(context).apply {
+            setViewTreeLifecycleOwner(this@SystemOverlayPipManager)
+            setViewTreeViewModelStoreOwner(this@SystemOverlayPipManager)
+            setViewTreeSavedStateRegistryOwner(this@SystemOverlayPipManager)
+            setContent {
+                val activeCh = currentChannel ?: return@setContent
+                Box(
+                    modifier = Modifier
+                        .width(220.dp)
+                        .height(138.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.Black)
+                        .border(1.5.dp, ActiveGreen, RoundedCornerShape(14.dp))
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                params.x = (params.x + dragAmount.x.roundToInt()).coerceAtLeast(0)
+                                params.y = (params.y + dragAmount.y.roundToInt()).coerceAtLeast(0)
+                                try {
+                                    windowManager.updateViewLayout(this@apply, params)
+                                } catch (_: Exception) {
+                                }
+                            }
+                        }
+                ) {
+                    AndroidView(
+                        factory = { ctx ->
+                            PlayerView(ctx).apply {
+                                player = exoPlayer
+                                useController = false
+                                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                            }
+                        },
+                        update = { pv ->
+                            pv.player = exoPlayer
+                            pv.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.TopCenter)
+                            .background(Color.Black.copy(alpha = 0.68f))
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = activeCh.name,
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .background(ActiveGreen)
+                                    .clickable {
+                                        val chToOpen = currentChannel
+                                        dismiss()
+                                        if (chToOpen != null) {
+                                            onExpandToApp(chToOpen)
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "⤢",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .background(LiveRed)
+                                    .clickable {
+                                        dismiss()
+                                        onCloseOverlay()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "إغلاق",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        lifecycleRegistry.currentState = Lifecycle.State.STARTED
+        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+        try {
+            windowManager.addView(view, params)
+            overlayView = view
+            layoutParams = params
+        } catch (_: Exception) {
+        }
+    }
+
+    fun dismiss() {
+        val v = overlayView
+        if (v != null) {
+            try {
+                windowManager.removeView(v)
+            } catch (_: Exception) {
+            }
+            overlayView = null
+            layoutParams = null
+        }
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
+    }
+
+    fun destroy() {
+        dismiss()
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        store.clear()
+    }
 }
 
 class MainActivity : ComponentActivity() {
@@ -2281,6 +2559,7 @@ fun AliKazemSportApp(
     accounts: List<SocialAccountItem>
 ) {
     val context = LocalContext.current
+    val activity = context as? Activity
     var selectedTab by remember { mutableIntStateOf(2) }
     var isArabic by remember { mutableStateOf(true) }
     var activeCategoryId by remember { mutableStateOf<CategoryId?>(null) }
@@ -2290,8 +2569,6 @@ fun AliKazemSportApp(
     var isMuted by remember { mutableStateOf(false) }
     var scaleMode by remember { mutableStateOf(PlayerScaleMode.STRETCH) }
     var reloadNonce by remember { mutableIntStateOf(0) }
-    var pipOffsetX by remember { mutableFloatStateOf(24f) }
-    var pipOffsetY by remember { mutableFloatStateOf(160f) }
 
     var remoteConfig by remember {
         mutableStateOf(
@@ -2340,6 +2617,40 @@ fun AliKazemSportApp(
         ExoPlayer.Builder(context)
             .setLoadControl(loadControl)
             .build()
+    }
+
+    val overlayManager = remember(sharedExoPlayer) {
+        SystemOverlayPipManager(
+            context = context.applicationContext,
+            exoPlayer = sharedExoPlayer,
+            onExpandToApp = { ch ->
+                selectedChannelId = ch.id
+                isMiniWindow = false
+                val launchIntent = Intent(context.applicationContext, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                }
+                context.applicationContext.startActivity(launchIntent)
+            },
+            onCloseOverlay = {
+                isMiniWindow = false
+                selectedChannelId = null
+                selectedServerIndex = 0
+                sharedExoPlayer.stop()
+            }
+        )
+    }
+
+    LaunchedEffect(isMiniWindow, selectedChannel) {
+        if (isMiniWindow && selectedChannel != null) {
+            if (overlayManager.hasOverlayPermission()) {
+                overlayManager.show(selectedChannel)
+            } else {
+                isMiniWindow = false
+                overlayManager.requestOverlayPermission(activity)
+            }
+        } else {
+            overlayManager.dismiss()
+        }
     }
 
     LaunchedEffect(sharedExoPlayer, isMuted) {
@@ -2402,8 +2713,9 @@ fun AliKazemSportApp(
         }
     }
 
-    DisposableEffect(sharedExoPlayer) {
+    DisposableEffect(sharedExoPlayer, overlayManager) {
         onDispose {
+            overlayManager.destroy()
             sharedExoPlayer.release()
         }
     }
@@ -2429,12 +2741,17 @@ fun AliKazemSportApp(
                     onCycleScaleMode = {
                         scaleMode = when (scaleMode) {
                             PlayerScaleMode.STRETCH -> PlayerScaleMode.FIT_16_9
-                            PlayerScaleMode.FIT_16_9 -> PlayerScaleMode.FILL_ZOOM
-                            PlayerScaleMode.FILL_ZOOM -> PlayerScaleMode.STRETCH
+                            PlayerScaleMode.FIT_16_9 -> PlayerScaleMode.STRETCH
                         }
                     },
                     onReload = { reloadNonce++ },
-                    onEnterMiniWindow = { isMiniWindow = true },
+                    onEnterMiniWindow = {
+                        if (overlayManager.hasOverlayPermission()) {
+                            isMiniWindow = true
+                        } else {
+                            overlayManager.requestOverlayPermission(activity)
+                        }
+                    },
                     onSelectServer = { idx -> selectedServerIndex = idx },
                     onBackToChannels = {
                         selectedChannelId = null
@@ -2579,124 +2896,6 @@ fun AliKazemSportApp(
                         )
                         else -> AccountsTabView(accounts = accounts)
                     }
-                }
-
-                if (selectedChannel != null && isMiniWindow) {
-                    FloatingMiniPlayerWindow(
-                        channel = selectedChannel,
-                        exoPlayer = sharedExoPlayer,
-                        offsetX = pipOffsetX,
-                        offsetY = pipOffsetY,
-                        onDrag = { dx, dy ->
-                            pipOffsetX += dx
-                            pipOffsetY += dy
-                        },
-                        onExpand = { isMiniWindow = false },
-                        onClose = {
-                            isMiniWindow = false
-                            selectedChannelId = null
-                            selectedServerIndex = 0
-                        },
-                        modifier = Modifier.align(Alignment.TopStart)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@androidx.annotation.OptIn(UnstableApi::class)
-@Composable
-private fun FloatingMiniPlayerWindow(
-    channel: ChannelItem,
-    exoPlayer: ExoPlayer,
-    offsetX: Float,
-    offsetY: Float,
-    onDrag: (Float, Float) -> Unit,
-    onExpand: () -> Unit,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
-            .width(210.dp)
-            .height(132.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.Black)
-            .border(1.5.dp, ActiveGreen, RoundedCornerShape(14.dp))
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    onDrag(dragAmount.x, dragAmount.y)
-                }
-            }
-    ) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    player = exoPlayer
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-                }
-            },
-            update = { playerView ->
-                playerView.player = exoPlayer
-                playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopCenter)
-                .background(Color.Black.copy(alpha = 0.65f))
-                .padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = channel.name,
-                color = Color.White,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape)
-                        .background(ActiveGreen)
-                        .clickable(onClick = onExpand),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.OpenInFull,
-                        contentDescription = "تكبير",
-                        tint = Color.White,
-                        modifier = Modifier.size(12.dp)
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape)
-                        .background(LiveRed)
-                        .clickable(onClick = onClose),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "إغلاق",
-                        tint = Color.White,
-                        modifier = Modifier.size(12.dp)
-                    )
                 }
             }
         }
@@ -2851,14 +3050,14 @@ private fun MatchesAndStandingsView(
         val existingCodes = merged.map { it.code.uppercase(Locale.ROOT) }.toMutableSet()
         remoteConfig.extraLeagues.forEach { ex ->
             val codeUpper = ex.code.uppercase(Locale.ROOT)
-            if (codeUpper != "IRQ" && codeUpper !in existingCodes && (remoteConfig.customStandings.containsKey(codeUpper) || codeUpper in LEAGUE_LOGO_URLS)) {
+            if (codeUpper != "IRQ" && !isExcludedCompetition(ex.name, codeUpper) && codeUpper !in existingCodes && (remoteConfig.customStandings.containsKey(codeUpper) || codeUpper in LEAGUE_LOGO_URLS)) {
                 merged.add(LeagueOption(code = codeUpper, shortLabel = ex.shortLabel))
                 existingCodes.add(codeUpper)
             }
         }
         remoteConfig.customStandings.keys.forEach { rawKey ->
             val codeUpper = rawKey.trim().uppercase(Locale.ROOT)
-            if (codeUpper != "IRQ" && codeUpper !in existingCodes) {
+            if (codeUpper != "IRQ" && !isExcludedCompetition(codeUpper, codeUpper) && codeUpper !in existingCodes) {
                 merged.add(LeagueOption(code = codeUpper, shortLabel = codeUpper))
                 existingCodes.add(codeUpper)
             }
@@ -2871,7 +3070,7 @@ private fun MatchesAndStandingsView(
         val existingCodes = merged.map { it.code.uppercase(Locale.ROOT) }.toMutableSet()
         remoteConfig.extraLeagues.forEach { ex ->
             val codeUpper = ex.code.uppercase(Locale.ROOT)
-            if (codeUpper != "IRQ" && codeUpper !in existingCodes && codeUpper in REGIONAL_API_FOOTBALL_LEAGUE_IDS) {
+            if (codeUpper != "IRQ" && !isExcludedCompetition(ex.name, codeUpper) && codeUpper !in existingCodes && codeUpper in REGIONAL_API_FOOTBALL_LEAGUE_IDS) {
                 merged.add(LeagueOption(code = codeUpper, shortLabel = ex.shortLabel))
                 existingCodes.add(codeUpper)
             }
@@ -2881,8 +3080,9 @@ private fun MatchesAndStandingsView(
 
     val cachedInitialMatches = remember { loadMatchesCache(context) }
 
-    // 0 = جدول المباريات، 1 = الترتيب، 2 = الهدافون، 3 = الصناع
     var subMode by remember { mutableIntStateOf(0) }
+    var showAssistsMode by remember { mutableStateOf(false) }
+
     var selectedDayKey by remember { mutableStateOf(todayKey) }
     var lastObservedTodayKey by remember { mutableStateOf(todayKey) }
     var matches by remember { mutableStateOf(cachedInitialMatches) }
@@ -2901,7 +3101,6 @@ private fun MatchesAndStandingsView(
     }
     var isLoadingScorers by remember { mutableStateOf(scorersRows.isEmpty()) }
 
-    var selectedAssisterLeague by remember { mutableStateOf(SCORER_LEAGUES.first()) }
     var assistersRows by remember {
         mutableStateOf(loadAssistsCache(context, SCORER_LEAGUES.first().code))
     }
@@ -3028,8 +3227,10 @@ private fun MatchesAndStandingsView(
         loadMatches(manual = false)
         when (subMode) {
             1 -> loadStandings(selectedStandingLeague.code)
-            2 -> loadScorers(selectedScorerLeague.code)
-            3 -> loadAssisters(selectedAssisterLeague.code)
+            2 -> {
+                if (showAssistsMode) loadAssisters(selectedScorerLeague.code)
+                else loadScorers(selectedScorerLeague.code)
+            }
         }
     }
 
@@ -3039,15 +3240,10 @@ private fun MatchesAndStandingsView(
         }
     }
 
-    LaunchedEffect(subMode, selectedScorerLeague) {
+    LaunchedEffect(subMode, selectedScorerLeague, showAssistsMode) {
         if (subMode == 2) {
-            loadScorers(selectedScorerLeague.code)
-        }
-    }
-
-    LaunchedEffect(subMode, selectedAssisterLeague) {
-        if (subMode == 3) {
-            loadAssisters(selectedAssisterLeague.code)
+            if (showAssistsMode) loadAssisters(selectedScorerLeague.code)
+            else loadScorers(selectedScorerLeague.code)
         }
     }
 
@@ -3081,8 +3277,7 @@ private fun MatchesAndStandingsView(
             val subTabs = listOf(
                 0 to "المباريات",
                 1 to "الترتيب",
-                2 to "الهدافون",
-                3 to "الصناع"
+                2 to "الهدافون"
             )
             subTabs.forEach { (mode, title) ->
                 Box(
@@ -3098,7 +3293,7 @@ private fun MatchesAndStandingsView(
                         text = title,
                         color = if (subMode == mode) Color.White else TextMuted,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         maxLines = 1
                     )
                 }
@@ -3478,15 +3673,16 @@ private fun MatchesAndStandingsView(
                             .padding(horizontal = 8.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("#", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(20.dp))
+                        Text("#", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(18.dp))
                         Text("الفريق", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Text("لعب", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
                         Text("ف", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(20.dp), textAlign = TextAlign.Center)
                         Text("ت", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(20.dp), textAlign = TextAlign.Center)
                         Text("خ", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(20.dp), textAlign = TextAlign.Center)
                         Text("له", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                        Text("عليه", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
                         Text("فارق", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
-                        Text("نقاط", color = ActiveGreen, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(32.dp), textAlign = TextAlign.Center)
+                        Text("نقاط", color = ActiveGreen, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
@@ -3517,7 +3713,7 @@ private fun MatchesAndStandingsView(
                                     color = if (row.position <= 4) ActiveGreen else TextMuted,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(20.dp)
+                                    modifier = Modifier.width(18.dp)
                                 )
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -3543,13 +3739,14 @@ private fun MatchesAndStandingsView(
                                 Text("${row.draw}", color = TextMuted, fontSize = 11.sp, modifier = Modifier.width(20.dp), textAlign = TextAlign.Center)
                                 Text("${row.lost}", color = TextMuted, fontSize = 11.sp, modifier = Modifier.width(20.dp), textAlign = TextAlign.Center)
                                 Text("${row.goalsFor}", color = TextWhite, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                                Text("${row.goalsAgainst}", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
                                 Text(gdLabel, color = gdColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
                                 Text(
                                     text = "${row.points}",
                                     color = ActiveGreen,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    modifier = Modifier.width(32.dp),
+                                    modifier = Modifier.width(30.dp),
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -3558,12 +3755,13 @@ private fun MatchesAndStandingsView(
                 }
             }
 
-            2 -> {
+            else -> {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     scorerLeagues.forEach { league ->
                         val selected = league.code == selectedScorerLeague.code
@@ -3593,260 +3791,270 @@ private fun MatchesAndStandingsView(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                if (isLoadingScorers && scorersRows.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = ActiveGreen)
-                    }
-                } else if (scorersRows.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(PanelBg)
-                            .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "لا توجد بيانات هدافين متاحة لهذه البطولة حالياً",
-                            color = TextMuted,
-                            fontSize = 13.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(TileBg)
-                            .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("#", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
-                        Text("اللاعب / النادي", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text("صناعة", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(42.dp), textAlign = TextAlign.Center)
-                        Text("الأهداف", color = ActiveGreen, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(48.dp), textAlign = TextAlign.Center)
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        contentPadding = PaddingValues(bottom = 20.dp)
-                    ) {
-                        items(scorersRows, key = { "${it.rank}_${it.playerName}_${it.teamName}" }) { row ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(PanelBg)
-                                    .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
-                                    .padding(horizontal = 10.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "${row.rank}",
-                                    color = if (row.rank <= 3) ActiveGreen else TextMuted,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(24.dp)
-                                )
-                                RemoteCrestBadge(
-                                    crestUrl = row.teamCrestUrl,
-                                    fallbackLabel = row.teamName
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = row.playerName,
-                                        color = TextWhite,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = row.teamName,
-                                        color = TextMuted,
-                                        fontSize = 11.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                Text(
-                                    text = "${row.assists}",
-                                    color = TextMuted,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(42.dp),
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    text = "${row.goals}",
-                                    color = ActiveGreen,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    modifier = Modifier
-                                        .width(48.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(TileInnerBg)
-                                        .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                                        .padding(vertical = 4.dp),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            else -> {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(TileBg)
+                        .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    scorerLeagues.forEach { league ->
-                        val selected = league.code == selectedAssisterLeague.code
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (selected) ActiveGreen else PanelBg)
-                                .border(1.dp, if (selected) ActiveGreen else BorderGreen, RoundedCornerShape(12.dp))
-                                .clickable { selectedAssisterLeague = league }
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            RemoteCrestBadge(
-                                crestUrl = resolveLeagueLogoUrl(league.code, remoteConfig.extraLeagues),
-                                fallbackLabel = league.shortLabel,
-                                modifier = Modifier.size(18.dp),
-                                leagueCode = league.code
-                            )
-                            Text(
-                                text = league.shortLabel,
-                                color = if (selected) Color.White else TextMuted,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-                        }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(if (!showAssistsMode) ActiveGreen else Color.Transparent)
+                            .clickable { showAssistsMode = false }
+                            .padding(vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "الهدافون",
+                            color = if (!showAssistsMode) Color.White else TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(if (showAssistsMode) ActiveGreen else Color.Transparent)
+                            .clickable { showAssistsMode = true }
+                            .padding(vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "اسيست",
+                            color = if (showAssistsMode) Color.White else TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                if (isLoadingAssisters && assistersRows.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = ActiveGreen)
-                    }
-                } else if (assistersRows.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(PanelBg)
-                            .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "لا توجد بيانات صناع أهداف متاحة لهذه البطولة حالياً",
-                            color = TextMuted,
-                            fontSize = 13.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(TileBg)
-                            .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("#", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
-                        Text("اللاعب / النادي", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text("صناعة", color = ActiveGreen, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(48.dp), textAlign = TextAlign.Center)
-                    }
+                if (!showAssistsMode) {
+                    if (isLoadingScorers && scorersRows.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = ActiveGreen)
+                        }
+                    } else if (scorersRows.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(PanelBg)
+                                .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "لا توجد بيانات هدافين متاحة لهذه البطولة حالياً",
+                                color = TextMuted,
+                                fontSize = 13.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(TileBg)
+                                .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("#", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
+                            Text("اللاعب / النادي", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            Text("اسيست", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(44.dp), textAlign = TextAlign.Center)
+                            Text("الأهداف", color = ActiveGreen, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(48.dp), textAlign = TextAlign.Center)
+                        }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        contentPadding = PaddingValues(bottom = 20.dp)
-                    ) {
-                        items(assistersRows, key = { "${it.rank}_${it.playerName}_${it.teamName}" }) { row ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(PanelBg)
-                                    .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
-                                    .padding(horizontal = 10.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "${row.rank}",
-                                    color = if (row.rank <= 3) ActiveGreen else TextMuted,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(24.dp)
-                                )
-                                RemoteCrestBadge(
-                                    crestUrl = row.teamCrestUrl,
-                                    fallbackLabel = row.teamName
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column(modifier = Modifier.weight(1f)) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            contentPadding = PaddingValues(bottom = 20.dp)
+                        ) {
+                            items(scorersRows, key = { "${it.rank}_${it.playerName}_${it.teamName}" }) { row ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(PanelBg)
+                                        .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Text(
-                                        text = row.playerName,
-                                        color = TextWhite,
-                                        fontSize = 13.sp,
+                                        text = "${row.rank}",
+                                        color = if (row.rank <= 3) ActiveGreen else TextMuted,
+                                        fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        modifier = Modifier.width(24.dp)
+                                    )
+                                    RemoteCrestBadge(
+                                        crestUrl = row.teamCrestUrl,
+                                        fallbackLabel = row.teamName
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = row.playerName,
+                                            color = TextWhite,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = row.teamName,
+                                            color = TextMuted,
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Text(
+                                        text = "${row.assists}",
+                                        color = TextMuted,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.width(44.dp),
+                                        textAlign = TextAlign.Center
                                     )
                                     Text(
-                                        text = row.teamName,
-                                        color = TextMuted,
-                                        fontSize = 11.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        text = "${row.goals}",
+                                        color = ActiveGreen,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        modifier = Modifier
+                                            .width(48.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(TileInnerBg)
+                                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                            .padding(vertical = 4.dp),
+                                        textAlign = TextAlign.Center
                                     )
                                 }
-                                Text(
-                                    text = "${row.assists}",
-                                    color = ActiveGreen,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.ExtraBold,
+                            }
+                        }
+                    }
+                } else {
+                    if (isLoadingAssisters && assistersRows.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = ActiveGreen)
+                        }
+                    } else if (assistersRows.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(PanelBg)
+                                .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "لا توجد بيانات اسيست متاحة لهذه البطولة حالياً",
+                                color = TextMuted,
+                                fontSize = 13.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(TileBg)
+                                .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("#", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
+                            Text("اللاعب / النادي", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            Text("اسيست", color = ActiveGreen, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(48.dp), textAlign = TextAlign.Center)
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            contentPadding = PaddingValues(bottom = 20.dp)
+                        ) {
+                            items(assistersRows, key = { "${it.rank}_${it.playerName}_${it.teamName}" }) { row ->
+                                Row(
                                     modifier = Modifier
-                                        .width(48.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(TileInnerBg)
-                                        .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                                        .padding(vertical = 4.dp),
-                                    textAlign = TextAlign.Center
-                                )
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(PanelBg)
+                                        .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${row.rank}",
+                                        color = if (row.rank <= 3) ActiveGreen else TextMuted,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.width(24.dp)
+                                    )
+                                    RemoteCrestBadge(
+                                        crestUrl = row.teamCrestUrl,
+                                        fallbackLabel = row.teamName
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = row.playerName,
+                                            color = TextWhite,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = row.teamName,
+                                            color = TextMuted,
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Text(
+                                        text = "${row.assists}",
+                                        color = ActiveGreen,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        modifier = Modifier
+                                            .width(48.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(TileInnerBg)
+                                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                            .padding(vertical = 4.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
                         }
                     }
@@ -3992,7 +4200,6 @@ private fun FullScreenStreamPlayer(
     val resizeModeValue = when (scaleMode) {
         PlayerScaleMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
         PlayerScaleMode.FIT_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-        PlayerScaleMode.FILL_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
     }
 
     Box(
@@ -4068,7 +4275,6 @@ private fun FullScreenStreamPlayer(
                         }
                     }
 
-                    // أيقونة الصوت فقط بدون نافذة منبثقة
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -4077,15 +4283,12 @@ private fun FullScreenStreamPlayer(
                             .clickable(onClick = onToggleMute),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "الصوت",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                        Text(
+                            text = if (isMuted) "🔇" else "🔊",
+                            fontSize = 15.sp
                         )
                     }
 
-                    // نافذة صغيرة عائمة
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -4094,15 +4297,14 @@ private fun FullScreenStreamPlayer(
                             .clickable(onClick = onEnterMiniWindow),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.PictureInPictureAlt,
-                            contentDescription = "نافذة صغيرة",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                        Text(
+                            text = "❐",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
-                    // زر التمديد
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
