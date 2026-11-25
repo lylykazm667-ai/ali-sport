@@ -27,11 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.OpenInFull
-import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -2675,11 +2671,11 @@ private fun FloatingMiniPlayerWindow(
                         .clickable(onClick = onExpand),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.OpenInFull,
-                        contentDescription = "تكبير",
-                        tint = Color.White,
-                        modifier = Modifier.size(12.dp)
+                    Text(
+                        text = "⤢",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
@@ -2881,7 +2877,6 @@ private fun MatchesAndStandingsView(
 
     val cachedInitialMatches = remember { loadMatchesCache(context) }
 
-    // 0 = جدول المباريات، 1 = الترتيب، 2 = الهدافون، 3 = الصناع
     var subMode by remember { mutableIntStateOf(0) }
     var selectedDayKey by remember { mutableStateOf(todayKey) }
     var lastObservedTodayKey by remember { mutableStateOf(todayKey) }
@@ -4077,11 +4072,9 @@ private fun FullScreenStreamPlayer(
                             .clickable(onClick = onToggleMute),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "الصوت",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                        Text(
+                            text = if (isMuted) "🔇" else "🔊",
+                            fontSize = 15.sp
                         )
                     }
 
@@ -4094,11 +4087,11 @@ private fun FullScreenStreamPlayer(
                             .clickable(onClick = onEnterMiniWindow),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.PictureInPictureAlt,
-                            contentDescription = "نافذة صغيرة",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                        Text(
+                            text = "❐",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
