@@ -1,6 +1,7 @@
 package com.aliskazem.livetv
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
@@ -64,7 +65,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -86,6 +86,12 @@ private val REGIONAL_API_FOOTBALL_KEYS = listOf(
     "34b4b3a4b2ca1509fbc1a4fc3915298"
 )
 private const val CURRENT_SEASON = 2026
+
+// ضع هنا رابط Raw الخاص بملف channels.json من GitHub
+private const val REMOTE_CHANNELS_JSON_URL =
+    "https://raw.githubusercontent.com/lylykazm667-ai/ali-sport/main/channels.json"
+private const val CHANNELS_CACHE_PREFS = "alikazem_channels_cache"
+private const val CHANNELS_CACHE_KEY = "channels_json_v1"
 
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
@@ -157,6 +163,22 @@ data class ScorerRowItem(
 data class LeagueOption(
     val code: String,
     val shortLabel: String
+)
+
+data class ExtraLeagueConfig(
+    val code: String,
+    val shortLabel: String,
+    val name: String,
+    val logoUrl: String? = null,
+    val priority: Int = 50
+)
+
+data class RemoteConfigData(
+    val categories: List<CategoryItem>,
+    val teamOverrides: Map<String, String> = emptyMap(),
+    val playerOverrides: Map<String, String> = emptyMap(),
+    val extraLeagues: List<ExtraLeagueConfig> = emptyList(),
+    val customStandings: Map<String, List<StandingRowItem>> = emptyMap()
 )
 
 data class SocialAccountItem(
@@ -272,7 +294,6 @@ private val SOCIAL_ACCOUNTS = listOf(
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
-    // Premier League
     "arsenal" to "آرسنال",
     "brighton hove albion" to "برايتون",
     "brighton hove" to "برايتون",
@@ -310,8 +331,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "west ham" to "وست هام",
     "wolverhampton wanderers" to "وولفرهامبتون",
     "wolves" to "وولفرهامبتون",
-
-    // La Liga
     "barcelona" to "برشلونة",
     "barca" to "برشلونة",
     "real madrid" to "ريال مدريد",
@@ -349,8 +368,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "malaga" to "ملقا",
     "girona" to "جيرونا",
     "mallorca" to "مايوركا",
-
-    // Serie A
     "lazio" to "لاتسيو",
     "ss lazio" to "لاتسيو",
     "roma" to "روما",
@@ -388,8 +405,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "venezia" to "فينيزيا",
     "hellas verona" to "هيلاس فيرونا",
     "verona" to "هيلاس فيرونا",
-
-    // Bundesliga
     "borussia dortmund" to "بوروسيا دورتموند",
     "dortmund" to "بوروسيا دورتموند",
     "bayern munchen" to "بايرن ميونخ",
@@ -428,8 +443,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "sc paderborn" to "بادربورن",
     "schalke 04" to "شالكه",
     "schalke" to "شالكه",
-
-    // Ligue 1
     "paris saint germain" to "باريس سان جيرمان",
     "psg" to "باريس سان جيرمان",
     "paris fc" to "باريس إف سي",
@@ -466,8 +479,6 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "le mans" to "لومان",
     "es troyes ac" to "تروا",
     "troyes" to "تروا",
-
-    // Regional & Champions League
     "hilal" to "الهلال",
     "al hilal" to "الهلال",
     "nassr" to "النصر",
@@ -510,6 +521,17 @@ private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
     "sk slovan bratislava" to "سلوفان براتيسلافا",
     "bratislava" to "سلوفان براتيسلافا"
 )
+
+private fun resolveCategoryId(raw: String, index: Int): CategoryId {
+    return when (raw.trim().uppercase(Locale.ROOT)) {
+        "BEIN" -> CategoryId.BEIN
+        "ALWAN" -> CategoryId.ALWAN
+        "ALKASS" -> CategoryId.ALKASS
+        "ABUDHABI" -> CategoryId.ABUDHABI
+        "THMANYAH" -> CategoryId.THMANYAH
+        else -> CategoryId.entries.getOrElse(index) { CategoryId.BEIN }
+    }
+}
 
 private fun foldSpecialLatinChars(raw: String): String {
     return raw.lowercase(Locale.ROOT)
@@ -596,6 +618,211 @@ private fun transliterateToArabic(raw: String): String {
     return sb.toString().replace(Regex("\\s+"), " ").trim()
 }
 
+private fun parseStringMap(obj: JSONObject?): Map<String, String> {
+    if (obj == null) return emptyMap()
+    val map = mutableMapOf<String, String>()
+    val keys = obj.keys()
+    while (keys.hasNext()) {
+        val k = keys.next()
+        val v = obj.optString(k, "").trim()
+        if (k.isNotBlank() && v.isNotBlank()) {
+            map[foldSpecialLatinChars(k.trim())] = v
+            map[normalizeTeamLookupKey(k)] = v
+        }
+    }
+    return map
+}
+
+private fun parseExtraLeagues(arr: JSONArray?): List<ExtraLeagueConfig> {
+    if (arr == null) return emptyList()
+    val list = mutableListOf<ExtraLeagueConfig>()
+    for (i in 0 until arr.length()) {
+        val obj = arr.optJSONObject(i) ?: continue
+        val code = obj.optString("code", "").trim().uppercase(Locale.ROOT)
+        val name = obj.optString("name", "").trim()
+        if (code.isBlank() || name.isBlank()) continue
+        val shortLabel = obj.optString("shortLabel", "").trim().ifBlank { name }
+        val logoUrl = obj.optString("logoUrl", "").trim().takeIf { it.isNotBlank() && it != "null" }
+        val priority = obj.optInt("priority", 50)
+        list.add(
+            ExtraLeagueConfig(
+                code = code,
+                shortLabel = shortLabel,
+                name = name,
+                logoUrl = logoUrl,
+                priority = priority
+            )
+        )
+    }
+    return list
+}
+
+private fun parseCustomStandings(obj: JSONObject?): Map<String, List<StandingRowItem>> {
+    if (obj == null) return emptyMap()
+    val map = mutableMapOf<String, List<StandingRowItem>>()
+    val keys = obj.keys()
+    while (keys.hasNext()) {
+        val rawCode = keys.next()
+        val code = rawCode.trim().uppercase(Locale.ROOT)
+        val rowsArr = obj.optJSONArray(rawCode) ?: continue
+        val rows = mutableListOf<StandingRowItem>()
+        for (i in 0 until rowsArr.length()) {
+            val rObj = rowsArr.optJSONObject(i) ?: continue
+            val teamName = rObj.optString("teamName", "").trim()
+            if (teamName.isBlank()) continue
+            val crestUrl = rObj.optString("crestUrl", "").trim().takeIf { it.isNotBlank() && it != "null" }
+            rows.add(
+                StandingRowItem(
+                    position = rObj.optInt("position", i + 1),
+                    teamName = teamName,
+                    crestUrl = crestUrl,
+                    played = rObj.optInt("played", 0),
+                    won = rObj.optInt("won", 0),
+                    draw = rObj.optInt("draw", 0),
+                    lost = rObj.optInt("lost", 0),
+                    goalDiff = rObj.optInt("goalDiff", 0),
+                    points = rObj.optInt("points", 0)
+                )
+            )
+        }
+        if (rows.isNotEmpty()) {
+            map[code] = rows.sortedBy { it.position }
+        }
+    }
+    return map
+}
+
+private fun parseRemoteConfigJson(jsonText: String, fallbackCategories: List<CategoryItem>): RemoteConfigData {
+    return try {
+        val root = JSONObject(jsonText)
+        val teamOverrides = parseStringMap(root.optJSONObject("teamOverrides"))
+        val playerOverrides = parseStringMap(root.optJSONObject("playerOverrides"))
+        val extraLeagues = parseExtraLeagues(root.optJSONArray("extraLeagues"))
+        val customStandings = parseCustomStandings(root.optJSONObject("customStandings"))
+
+        val catsArr = root.optJSONArray("categories")
+        if (catsArr == null) {
+            return RemoteConfigData(
+                categories = fallbackCategories,
+                teamOverrides = teamOverrides,
+                playerOverrides = playerOverrides,
+                extraLeagues = extraLeagues,
+                customStandings = customStandings
+            )
+        }
+
+        val fallbackById = fallbackCategories.associateBy { it.id }
+        val result = mutableListOf<CategoryItem>()
+
+        for (i in 0 until catsArr.length()) {
+            val cObj = catsArr.optJSONObject(i) ?: continue
+            val catId = resolveCategoryId(cObj.optString("id", ""), i)
+            val fallbackCat = fallbackById[catId]
+            val chArr = cObj.optJSONArray("channels") ?: JSONArray()
+            val channels = mutableListOf<ChannelItem>()
+
+            for (j in 0 until chArr.length()) {
+                val item = chArr.optJSONObject(j) ?: continue
+                val url = item.optString("url", "").trim()
+                if (url.isBlank()) continue
+                val backupRaw = item.optString("backupUrl", "").trim()
+                val backup = if (backupRaw.isBlank() || backupRaw.equals("null", ignoreCase = true)) null else backupRaw
+                val fallbackCh = fallbackCat?.channels?.getOrNull(j)
+
+                channels.add(
+                    ChannelItem(
+                        id = item.optString("id", "").trim().ifBlank { "${catId.name.lowercase(Locale.ROOT)}_${j + 1}" },
+                        name = item.optString("name", "").trim().ifBlank { fallbackCh?.name ?: "قناة ${j + 1}" },
+                        url = url,
+                        backupUrl = backup,
+                        logoAssetName = item.optString("logoAssetName", "").trim().ifBlank {
+                            fallbackCh?.logoAssetName ?: (fallbackCat?.logoAssetName ?: "bein")
+                        },
+                        badgeText = item.optString("badgeText", "").trim().ifBlank {
+                            fallbackCh?.badgeText ?: item.optString("name", "LIVE")
+                        },
+                        badgeBg = fallbackCh?.badgeBg ?: (fallbackCat?.badgeBg ?: PanelBg),
+                        badgeTextColor = fallbackCh?.badgeTextColor ?: (fallbackCat?.badgeTextColor ?: Color.White)
+                    )
+                )
+            }
+
+            if (channels.isNotEmpty()) {
+                result.add(
+                    CategoryItem(
+                        id = catId,
+                        name = cObj.optString("name", "").trim().ifBlank { fallbackCat?.name ?: catId.name },
+                        logoAssetName = cObj.optString("logoAssetName", "").trim().ifBlank {
+                            fallbackCat?.logoAssetName ?: "bein"
+                        },
+                        badgeText = cObj.optString("badgeText", "").trim().ifBlank {
+                            fallbackCat?.badgeText ?: catId.name
+                        },
+                        badgeBg = fallbackCat?.badgeBg ?: PanelBg,
+                        badgeTextColor = fallbackCat?.badgeTextColor ?: Color.White,
+                        channels = channels
+                    )
+                )
+            }
+        }
+
+        RemoteConfigData(
+            categories = if (result.isNotEmpty()) result else fallbackCategories,
+            teamOverrides = teamOverrides,
+            playerOverrides = playerOverrides,
+            extraLeagues = extraLeagues,
+            customStandings = customStandings
+        )
+    } catch (_: Exception) {
+        RemoteConfigData(categories = fallbackCategories)
+    }
+}
+
+private fun saveCachedChannelsJson(context: Context, jsonText: String) {
+    val prefs = context.getSharedPreferences(CHANNELS_CACHE_PREFS, Context.MODE_PRIVATE)
+    prefs.edit().putString(CHANNELS_CACHE_KEY, jsonText).apply()
+}
+
+private fun loadCachedChannelsJson(context: Context): String? {
+    val prefs = context.getSharedPreferences(CHANNELS_CACHE_PREFS, Context.MODE_PRIVATE)
+    return prefs.getString(CHANNELS_CACHE_KEY, null)
+}
+
+private suspend fun fetchRemoteConfig(
+    context: Context,
+    remoteUrl: String,
+    fallbackCategories: List<CategoryItem>
+): RemoteConfigData {
+    if (remoteUrl.isBlank()) {
+        val cached = loadCachedChannelsJson(context)
+        return if (!cached.isNullOrBlank()) {
+            parseRemoteConfigJson(cached, fallbackCategories)
+        } else {
+            RemoteConfigData(categories = fallbackCategories)
+        }
+    }
+    return withContext(Dispatchers.IO) {
+        val urlWithCacheBust = if (remoteUrl.contains("?")) {
+            "$remoteUrl&_t=${System.currentTimeMillis()}"
+        } else {
+            "$remoteUrl?_t=${System.currentTimeMillis()}"
+        }
+        val body = httpGetJson(urlWithCacheBust, mapOf("User-Agent" to "Mozilla/5.0"))
+        if (!body.isNullOrBlank()) {
+            val parsed = parseRemoteConfigJson(body, fallbackCategories)
+            saveCachedChannelsJson(context, body)
+            parsed
+        } else {
+            val cached = loadCachedChannelsJson(context)
+            if (!cached.isNullOrBlank()) {
+                parseRemoteConfigJson(cached, fallbackCategories)
+            } else {
+                RemoteConfigData(categories = fallbackCategories)
+            }
+        }
+    }
+}
+
 private object CrestMemoryCache {
     private val cache = mutableMapOf<String, Bitmap>()
 
@@ -665,12 +892,26 @@ private fun isExcludedCompetition(text: String, code: String? = null): Boolean {
     return blockedKeywords.any { normalized.contains(it) }
 }
 
-private fun detectLeagueCode(rawName: String, code: String? = null): String? {
+private fun detectLeagueCode(
+    rawName: String,
+    code: String? = null,
+    extraLeagues: List<ExtraLeagueConfig> = emptyList()
+): String? {
     val cleanCode = code?.trim()?.uppercase(Locale.ROOT)
-    if (!cleanCode.isNullOrBlank() && LEAGUE_LOGO_URLS.containsKey(cleanCode)) {
-        return cleanCode
+    if (!cleanCode.isNullOrBlank()) {
+        if (extraLeagues.any { it.code.equals(cleanCode, ignoreCase = true) }) {
+            return cleanCode
+        }
+        if (LEAGUE_LOGO_URLS.containsKey(cleanCode)) {
+            return cleanCode
+        }
     }
     val lower = foldSpecialLatinChars(rawName)
+    extraLeagues.firstOrNull { ex ->
+        ex.name.isNotBlank() && (rawName.contains(ex.name) || lower.contains(foldSpecialLatinChars(ex.name))) ||
+            ex.shortLabel.isNotBlank() && (rawName.contains(ex.shortLabel) || lower.contains(foldSpecialLatinChars(ex.shortLabel)))
+    }?.let { return it.code }
+
     return when {
         lower.contains("premier league") || rawName.contains("الإنجليزي") -> "PL"
         lower.contains("la liga") || lower.contains("primera") || rawName.contains("الإسباني") -> "PD"
@@ -686,8 +927,24 @@ private fun detectLeagueCode(rawName: String, code: String? = null): String? {
     }
 }
 
-private fun translateCompetitionName(rawName: String, code: String? = null): String {
-    val resolvedCode = detectLeagueCode(rawName, code)
+private fun resolveLeagueLogoUrl(
+    code: String?,
+    extraLeagues: List<ExtraLeagueConfig> = emptyList()
+): String? {
+    val cleanCode = code?.trim()?.uppercase(Locale.ROOT) ?: return null
+    extraLeagues.firstOrNull { it.code.equals(cleanCode, ignoreCase = true) && !it.logoUrl.isNullOrBlank() }
+        ?.let { return it.logoUrl }
+    return LEAGUE_LOGO_URLS[cleanCode]
+}
+
+private fun translateCompetitionName(
+    rawName: String,
+    code: String? = null,
+    extraLeagues: List<ExtraLeagueConfig> = emptyList()
+): String {
+    val resolvedCode = detectLeagueCode(rawName, code, extraLeagues)
+    extraLeagues.firstOrNull { it.code.equals(resolvedCode, ignoreCase = true) }?.let { return it.name }
+
     val clean = rawName.trim()
     val lower = foldSpecialLatinChars(clean)
     return when (resolvedCode) {
@@ -708,15 +965,36 @@ private fun translateCompetitionName(rawName: String, code: String? = null): Str
     }
 }
 
-private fun translateTeamName(rawTeam: String): String {
+private fun translateTeamName(
+    rawTeam: String,
+    teamOverrides: Map<String, String> = emptyMap()
+): String {
     val clean = rawTeam.trim()
     if (clean.isBlank()) return "فريق"
     val folded = foldSpecialLatinChars(clean)
+    teamOverrides[folded]?.let { return it }
     TEAM_ARABIC_NAMES[folded]?.let { return it }
+
     val normalized = normalizeTeamLookupKey(clean)
+    teamOverrides[normalized]?.let { return it }
     TEAM_ARABIC_NAMES[normalized]?.let { return it }
+
     val hasArabic = clean.any { it in '\u0600'..'\u06FF' }
     return if (hasArabic) clean else transliterateToArabic(clean)
+}
+
+private fun translatePlayerName(
+    rawPlayer: String,
+    playerOverrides: Map<String, String> = emptyMap(),
+    teamOverrides: Map<String, String> = emptyMap()
+): String {
+    val clean = rawPlayer.trim()
+    if (clean.isBlank()) return "لاعب"
+    val folded = foldSpecialLatinChars(clean)
+    playerOverrides[folded]?.let { return it }
+    val normalized = normalizeTeamLookupKey(clean)
+    playerOverrides[normalized]?.let { return it }
+    return translateTeamName(clean, teamOverrides)
 }
 
 private fun buildBaghdadDays(): List<DayOption> {
@@ -805,7 +1083,9 @@ private suspend fun fetchRegionalMatchesForLeague(
     code: String,
     leagueId: Int,
     dateFrom: String,
-    dateTo: String
+    dateTo: String,
+    teamOverrides: Map<String, String>,
+    extraLeagues: List<ExtraLeagueConfig>
 ): List<LiveMatchItem> {
     return withContext(Dispatchers.IO) {
         val body = httpGetWithRegionalApiFootballKeys(
@@ -840,8 +1120,8 @@ private suspend fun fetchRegionalMatchesForLeague(
 
             val homeObj = teams.optJSONObject("home")
             val awayObj = teams.optJSONObject("away")
-            val homeName = translateTeamName(homeObj?.optString("name", "الفريق الأول") ?: "الفريق الأول")
-            val awayName = translateTeamName(awayObj?.optString("name", "الفريق الثاني") ?: "الفريق الثاني")
+            val homeName = translateTeamName(homeObj?.optString("name", "الفريق الأول") ?: "الفريق الأول", teamOverrides)
+            val awayName = translateTeamName(awayObj?.optString("name", "الفريق الثاني") ?: "الفريق الثاني", teamOverrides)
             val homeCrest = homeObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
             val awayCrest = awayObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
 
@@ -861,9 +1141,9 @@ private suspend fun fetchRegionalMatchesForLeague(
                     awayTeam = awayName,
                     homeCrestUrl = homeCrest,
                     awayCrestUrl = awayCrest,
-                    league = translateCompetitionName("", code),
+                    league = translateCompetitionName("", code, extraLeagues),
                     leagueCode = code,
-                    leagueLogoUrl = LEAGUE_LOGO_URLS[code],
+                    leagueLogoUrl = resolveLeagueLogoUrl(code, extraLeagues),
                     status = status,
                     minute = elapsed,
                     homeScore = homeScore,
@@ -875,7 +1155,12 @@ private suspend fun fetchRegionalMatchesForLeague(
     }
 }
 
-private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List<LiveMatchItem> {
+private suspend fun fetchMatchesFiltered(
+    dateFrom: String,
+    dateTo: String,
+    teamOverrides: Map<String, String> = emptyMap(),
+    extraLeagues: List<ExtraLeagueConfig> = emptyList()
+): List<LiveMatchItem> {
     return withContext(Dispatchers.IO) {
         val fdDeferred = async {
             val url = "https://api.football-data.org/v4/matches?dateFrom=$dateFrom&dateTo=$dateTo"
@@ -905,7 +1190,7 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
                     continue
                 }
 
-                val resolvedCode = detectLeagueCode(compNameRaw, compCode)
+                val resolvedCode = detectLeagueCode(compNameRaw, compCode, extraLeagues)
                 if (resolvedCode == null || resolvedCode in setOf("IRQ", "SAU", "ACL", "CAFCL")) {
                     continue
                 }
@@ -928,12 +1213,14 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
                 val homeName = translateTeamName(
                     homeObj?.optString("name")?.takeIf { it.isNotBlank() }
                         ?: homeObj?.optString("shortName", "الفريق الأول")
-                        ?: "الفريق الأول"
+                        ?: "الفريق الأول",
+                    teamOverrides
                 )
                 val awayName = translateTeamName(
                     awayObj?.optString("name")?.takeIf { it.isNotBlank() }
                         ?: awayObj?.optString("shortName", "الفريق الثاني")
-                        ?: "الفريق الثاني"
+                        ?: "الفريق الثاني",
+                    teamOverrides
                 )
                 val homeCrest = homeObj?.optString("crest")?.takeIf {
                     it.isNotBlank() && it != "null" && !it.endsWith(".svg", ignoreCase = true)
@@ -960,9 +1247,9 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
                         awayTeam = awayName,
                         homeCrestUrl = homeCrest,
                         awayCrestUrl = awayCrest,
-                        league = translateCompetitionName(compNameRaw, resolvedCode),
+                        league = translateCompetitionName(compNameRaw, resolvedCode, extraLeagues),
                         leagueCode = resolvedCode,
-                        leagueLogoUrl = LEAGUE_LOGO_URLS[resolvedCode],
+                        leagueLogoUrl = resolveLeagueLogoUrl(resolvedCode, extraLeagues),
                         status = status,
                         minute = minuteVal,
                         homeScore = homeScore,
@@ -976,7 +1263,7 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
         val regionalDeferreds = REGIONAL_API_FOOTBALL_LEAGUE_IDS.flatMap { (code, ids) ->
             ids.map { leagueId ->
                 async {
-                    fetchRegionalMatchesForLeague(code, leagueId, dateFrom, dateTo)
+                    fetchRegionalMatchesForLeague(code, leagueId, dateFrom, dateTo, teamOverrides, extraLeagues)
                 }
             }
         }
@@ -991,16 +1278,29 @@ private suspend fun fetchMatchesFiltered(dateFrom: String, dateTo: String): List
     }
 }
 
-private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRowItem> {
-    if (
-        isExcludedCompetition(leagueCode, leagueCode) ||
-        leagueCode in setOf("IRQ", "SAU", "ACL", "CAFCL")
-    ) {
-        return emptyList()
+private suspend fun fetchStandingsForLeague(
+    leagueCode: String,
+    teamOverrides: Map<String, String> = emptyMap(),
+    customStandings: Map<String, List<StandingRowItem>> = emptyMap()
+): List<StandingRowItem> {
+    val cleanCode = leagueCode.trim().uppercase(Locale.ROOT)
+    val customRows = customStandings[cleanCode]?.map { row ->
+        row.copy(teamName = translateTeamName(row.teamName, teamOverrides))
     }
+
+    if (
+        isExcludedCompetition(cleanCode, cleanCode) ||
+        cleanCode in setOf("IRQ", "SAU", "ACL", "CAFCL")
+    ) {
+        return customRows.orEmpty()
+    }
+
     return withContext(Dispatchers.IO) {
-        val url = "https://api.football-data.org/v4/competitions/$leagueCode/standings"
-        val body = httpGetJson(url, mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY)) ?: return@withContext emptyList()
+        val url = "https://api.football-data.org/v4/competitions/$cleanCode/standings"
+        val body = httpGetJson(url, mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY))
+        if (body.isNullOrBlank()) {
+            return@withContext customRows.orEmpty()
+        }
 
         val root = JSONObject(body)
         val standingsArr = root.optJSONArray("standings") ?: JSONArray()
@@ -1021,7 +1321,8 @@ private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRo
             val teamName = translateTeamName(
                 teamObj?.optString("name")?.takeIf { it.isNotBlank() }
                     ?: teamObj?.optString("shortName", "")
-                    ?: ""
+                    ?: "",
+                teamOverrides
             )
             if (teamName.isBlank()) continue
             val crest = teamObj?.optString("crest")?.takeIf {
@@ -1042,11 +1343,43 @@ private suspend fun fetchStandingsForLeague(leagueCode: String): List<StandingRo
                 )
             )
         }
+
+        if (rows.isEmpty() && !customRows.isNullOrEmpty()) {
+            return@withContext customRows
+        }
+
+        if (!customRows.isNullOrEmpty()) {
+            val overrideByTeam = customRows.associateBy { normalizeTeamLookupKey(it.teamName) }
+            val merged = rows.map { base ->
+                val ov = overrideByTeam[normalizeTeamLookupKey(base.teamName)]
+                if (ov != null) {
+                    base.copy(
+                        position = ov.position,
+                        teamName = ov.teamName,
+                        crestUrl = ov.crestUrl ?: base.crestUrl,
+                        played = ov.played,
+                        won = ov.won,
+                        draw = ov.draw,
+                        lost = ov.lost,
+                        goalDiff = ov.goalDiff,
+                        points = ov.points
+                    )
+                } else {
+                    base
+                }
+            }.sortedBy { it.position }
+            return@withContext merged
+        }
+
         rows
     }
 }
 
-private suspend fun fetchTopScorersForLeague(leagueCode: String): List<ScorerRowItem> {
+private suspend fun fetchTopScorersForLeague(
+    leagueCode: String,
+    playerOverrides: Map<String, String> = emptyMap(),
+    teamOverrides: Map<String, String> = emptyMap()
+): List<ScorerRowItem> {
     if (isExcludedCompetition(leagueCode, leagueCode)) {
         return emptyList()
     }
@@ -1081,8 +1414,8 @@ private suspend fun fetchTopScorersForLeague(leagueCode: String): List<ScorerRow
                     rows.add(
                         ScorerRowItem(
                             rank = i + 1,
-                            playerName = translateTeamName(rawPlayerName),
-                            teamName = translateTeamName(rawTeamName),
+                            playerName = translatePlayerName(rawPlayerName, playerOverrides, teamOverrides),
+                            teamName = translateTeamName(rawTeamName, teamOverrides),
                             teamCrestUrl = teamCrest,
                             goals = goalsCount
                         )
@@ -1122,8 +1455,8 @@ private suspend fun fetchTopScorersForLeague(leagueCode: String): List<ScorerRow
             rows.add(
                 ScorerRowItem(
                     rank = i + 1,
-                    playerName = translateTeamName(rawPlayerName),
-                    teamName = translateTeamName(rawTeamName),
+                    playerName = translatePlayerName(rawPlayerName, playerOverrides, teamOverrides),
+                    teamName = translateTeamName(rawTeamName, teamOverrides),
                     teamCrestUrl = teamCrest,
                     goals = goalsCount
                 )
@@ -1133,13 +1466,18 @@ private suspend fun fetchTopScorersForLeague(leagueCode: String): List<ScorerRow
     }
 }
 
-private fun groupMatchesByLeagueOrdered(dayMatches: List<LiveMatchItem>): List<MatchFeedListEntry> {
+private fun groupMatchesByLeagueOrdered(
+    dayMatches: List<LiveMatchItem>,
+    extraLeagues: List<ExtraLeagueConfig> = emptyList()
+): List<MatchFeedListEntry> {
     if (dayMatches.isEmpty()) return emptyList()
+
+    val customPriorities = extraLeagues.associate { it.code.uppercase(Locale.ROOT) to it.priority }
 
     val grouped = dayMatches.groupBy { it.leagueCode ?: it.league }
     val sortedKeys = grouped.keys.sortedWith { k1, k2 ->
-        val p1 = LEAGUE_ORDER_PRIORITY[k1] ?: 99
-        val p2 = LEAGUE_ORDER_PRIORITY[k2] ?: 99
+        val p1 = customPriorities[k1?.uppercase(Locale.ROOT)] ?: LEAGUE_ORDER_PRIORITY[k1] ?: 99
+        val p2 = customPriorities[k2?.uppercase(Locale.ROOT)] ?: LEAGUE_ORDER_PRIORITY[k2] ?: 99
         if (p1 != p2) p1.compareTo(p2) else k1.compareTo(k2)
     }
 
@@ -1153,7 +1491,7 @@ private fun groupMatchesByLeagueOrdered(dayMatches: List<LiveMatchItem>): List<M
                 leagueKey = key,
                 leagueName = sample.league,
                 leagueCode = sample.leagueCode,
-                leagueLogoUrl = sample.leagueLogoUrl,
+                leagueLogoUrl = sample.leagueLogoUrl ?: resolveLeagueLogoUrl(sample.leagueCode, extraLeagues),
                 matchesCount = listForLeague.size
             )
         )
@@ -1547,11 +1885,35 @@ fun AliKazemSportApp(
     fallbackMatches: List<LiveMatchItem>,
     accounts: List<SocialAccountItem>
 ) {
+    val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(2) }
     var isArabic by remember { mutableStateOf(true) }
-    var activeCategory by remember { mutableStateOf<CategoryItem?>(null) }
-    var selectedChannel by remember { mutableStateOf<ChannelItem?>(null) }
+    var activeCategoryId by remember { mutableStateOf<CategoryId?>(null) }
+    var selectedChannelId by remember { mutableStateOf<String?>(null) }
     var selectedServerIndex by remember { mutableIntStateOf(0) }
+
+    var remoteConfig by remember {
+        mutableStateOf(
+            loadCachedChannelsJson(context)?.let { parseRemoteConfigJson(it, categories) }
+                ?: RemoteConfigData(categories = categories)
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        remoteConfig = fetchRemoteConfig(context, REMOTE_CHANNELS_JSON_URL, remoteConfig.categories)
+    }
+
+    val liveCategories = remoteConfig.categories
+
+    val activeCategory = remember(liveCategories, activeCategoryId) {
+        activeCategoryId?.let { id -> liveCategories.find { it.id == id } }
+    }
+
+    val selectedChannel = remember(liveCategories, activeCategory, selectedChannelId) {
+        val chId = selectedChannelId ?: return@remember null
+        activeCategory?.channels?.find { it.id == chId }
+            ?: liveCategories.asSequence().flatMap { it.channels.asSequence() }.find { it.id == chId }
+    }
 
     val layoutDir = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
 
@@ -1564,11 +1926,11 @@ fun AliKazemSportApp(
         ) {
             if (selectedChannel != null) {
                 FullScreenStreamPlayer(
-                    channel = selectedChannel!!,
+                    channel = selectedChannel,
                     selectedServerIndex = selectedServerIndex,
                     onSelectServer = { idx -> selectedServerIndex = idx },
                     onBackToChannels = {
-                        selectedChannel = null
+                        selectedChannelId = null
                         selectedServerIndex = 0
                     }
                 )
@@ -1679,25 +2041,27 @@ fun AliKazemSportApp(
 
                     when (selectedTab) {
                         2 -> {
-                            val currentCategory = activeCategory
-                            if (currentCategory == null) {
+                            if (activeCategory == null) {
                                 CategoriesGridView(
-                                    categories = categories,
-                                    onSelectCategory = { cat -> activeCategory = cat }
+                                    categories = liveCategories,
+                                    onSelectCategory = { cat -> activeCategoryId = cat.id }
                                 )
                             } else {
                                 CategoryChannelsListView(
-                                    category = currentCategory,
+                                    category = activeCategory,
                                     selectedChannel = selectedChannel,
-                                    onBackToCategories = { activeCategory = null },
+                                    onBackToCategories = { activeCategoryId = null },
                                     onSelectChannel = { ch ->
-                                        selectedChannel = ch
+                                        selectedChannelId = ch.id
                                         selectedServerIndex = 0
                                     }
                                 )
                             }
                         }
-                        1 -> MatchesAndStandingsView(fallbackMatches = fallbackMatches)
+                        1 -> MatchesAndStandingsView(
+                            fallbackMatches = fallbackMatches,
+                            remoteConfig = remoteConfig
+                        )
                         else -> AccountsTabView(accounts = accounts)
                     }
                 }
@@ -1839,9 +2203,45 @@ private fun RemoteCrestBadge(
 }
 
 @Composable
-private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
+private fun MatchesAndStandingsView(
+    fallbackMatches: List<LiveMatchItem>,
+    remoteConfig: RemoteConfigData
+) {
     val scope = rememberCoroutineScope()
     val dayOptions = remember { buildBaghdadDays() }
+
+    val standingLeagues = remember(remoteConfig.extraLeagues, remoteConfig.customStandings) {
+        val merged = STANDING_LEAGUES.toMutableList()
+        val existingCodes = merged.map { it.code.uppercase(Locale.ROOT) }.toMutableSet()
+        remoteConfig.extraLeagues.forEach { ex ->
+            val codeUpper = ex.code.uppercase(Locale.ROOT)
+            if (codeUpper !in existingCodes && (remoteConfig.customStandings.containsKey(codeUpper) || codeUpper in LEAGUE_LOGO_URLS)) {
+                merged.add(LeagueOption(code = codeUpper, shortLabel = ex.shortLabel))
+                existingCodes.add(codeUpper)
+            }
+        }
+        remoteConfig.customStandings.keys.forEach { rawKey ->
+            val codeUpper = rawKey.trim().uppercase(Locale.ROOT)
+            if (codeUpper !in existingCodes) {
+                merged.add(LeagueOption(code = codeUpper, shortLabel = codeUpper))
+                existingCodes.add(codeUpper)
+            }
+        }
+        merged
+    }
+
+    val scorerLeagues = remember(remoteConfig.extraLeagues) {
+        val merged = SCORER_LEAGUES.toMutableList()
+        val existingCodes = merged.map { it.code.uppercase(Locale.ROOT) }.toMutableSet()
+        remoteConfig.extraLeagues.forEach { ex ->
+            val codeUpper = ex.code.uppercase(Locale.ROOT)
+            if (codeUpper !in existingCodes && codeUpper in REGIONAL_API_FOOTBALL_LEAGUE_IDS) {
+                merged.add(LeagueOption(code = codeUpper, shortLabel = ex.shortLabel))
+                existingCodes.add(codeUpper)
+            }
+        }
+        merged
+    }
 
     var subMode by remember { mutableIntStateOf(0) }
     var selectedDayKey by remember { mutableStateOf(dayOptions.first().key) }
@@ -1870,11 +2270,23 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
             if (manual) isRefreshing = true else if (matches.isEmpty()) isLoadingMatches = true
             val fromDate = dayOptions.first().key
             val toDate = dayOptions.last().key
-            val fetched = fetchMatchesFiltered(fromDate, toDate)
+            val fetched = fetchMatchesFiltered(
+                dateFrom = fromDate,
+                dateTo = toDate,
+                teamOverrides = remoteConfig.teamOverrides,
+                extraLeagues = remoteConfig.extraLeagues
+            )
             if (fetched.isNotEmpty()) {
                 matches = fetched
             } else if (matches.isEmpty()) {
-                matches = fallbackMatches.filter { !isExcludedCompetition(it.league, it.leagueCode) }
+                matches = fallbackMatches
+                    .filter { !isExcludedCompetition(it.league, it.leagueCode) }
+                    .map { m ->
+                        m.copy(
+                            homeTeam = translateTeamName(m.homeTeam, remoteConfig.teamOverrides),
+                            awayTeam = translateTeamName(m.awayTeam, remoteConfig.teamOverrides)
+                        )
+                    }
             }
             isLoadingMatches = false
             isRefreshing = false
@@ -1884,7 +2296,11 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
     fun loadStandings(code: String) {
         scope.launch {
             isLoadingStandings = true
-            standingsRows = fetchStandingsForLeague(code)
+            standingsRows = fetchStandingsForLeague(
+                leagueCode = code,
+                teamOverrides = remoteConfig.teamOverrides,
+                customStandings = remoteConfig.customStandings
+            )
             isLoadingStandings = false
         }
     }
@@ -1892,13 +2308,22 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
     fun loadScorers(code: String) {
         scope.launch {
             isLoadingScorers = true
-            scorersRows = fetchTopScorersForLeague(code)
+            scorersRows = fetchTopScorersForLeague(
+                leagueCode = code,
+                playerOverrides = remoteConfig.playerOverrides,
+                teamOverrides = remoteConfig.teamOverrides
+            )
             isLoadingScorers = false
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(remoteConfig) {
         loadMatches(manual = false)
+        if (subMode == 1) {
+            loadStandings(selectedStandingLeague.code)
+        } else if (subMode == 2) {
+            loadScorers(selectedScorerLeague.code)
+        }
     }
 
     LaunchedEffect(subMode, selectedStandingLeague) {
@@ -1922,8 +2347,8 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
         }
     }
 
-    val orderedEntries = remember(dayMatches) {
-        groupMatchesByLeagueOrdered(dayMatches)
+    val orderedEntries = remember(dayMatches, remoteConfig.extraLeagues) {
+        groupMatchesByLeagueOrdered(dayMatches, remoteConfig.extraLeagues)
     }
 
     val selectedDayInfo = dayOptions.find { it.key == selectedDayKey } ?: dayOptions.first()
@@ -2286,7 +2711,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    STANDING_LEAGUES.forEach { league ->
+                    standingLeagues.forEach { league ->
                         val selected = league.code == selectedStandingLeague.code
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -2299,7 +2724,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             RemoteCrestBadge(
-                                crestUrl = LEAGUE_LOGO_URLS[league.code],
+                                crestUrl = resolveLeagueLogoUrl(league.code, remoteConfig.extraLeagues),
                                 fallbackLabel = league.shortLabel,
                                 modifier = Modifier.size(18.dp),
                                 leagueCode = league.code
@@ -2428,7 +2853,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    SCORER_LEAGUES.forEach { league ->
+                    scorerLeagues.forEach { league ->
                         val selected = league.code == selectedScorerLeague.code
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -2441,7 +2866,7 @@ private fun MatchesAndStandingsView(fallbackMatches: List<LiveMatchItem>) {
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             RemoteCrestBadge(
-                                crestUrl = LEAGUE_LOGO_URLS[league.code],
+                                crestUrl = resolveLeagueLogoUrl(league.code, remoteConfig.extraLeagues),
                                 fallbackLabel = league.shortLabel,
                                 modifier = Modifier.size(18.dp),
                                 leagueCode = league.code
