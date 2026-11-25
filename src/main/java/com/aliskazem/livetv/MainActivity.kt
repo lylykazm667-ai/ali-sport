@@ -113,7 +113,7 @@ private const val REMOTE_CHANNELS_JSON_URL =
 private const val CHANNELS_CACHE_PREFS = "alikazem_channels_cache"
 private const val CHANNELS_CACHE_KEY = "channels_json_v1"
 private const val MATCHES_CACHE_KEY = "matches_feed_cache_v1"
-private const val STANDINGS_CACHE_PREFIX = "standings_cache_v4_"
+private const val STANDINGS_CACHE_PREFIX = "standings_cache_v5_"
 private const val SCORERS_CACHE_PREFIX = "scorers_cache_v3_"
 private const val ASSISTS_CACHE_PREFIX = "assists_cache_v2_"
 
@@ -367,7 +367,7 @@ private val PLAYER_ARABIC_NAMES: Map<String, String> = mapOf(
     "ثيرنو بارري" to "ثيرنو باري",
     "nicolas jackson" to "نيكولاس جاكسون",
     "jackson" to "نيكولاس جاكسون",
-    "نيكولاس جاككسون" to "نيكولاس جاكسون"
+    "نيكولاس جاككسون" to "نيكولاس جاككسون"
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
@@ -770,10 +770,26 @@ private fun parseCustomStandings(obj: JSONObject?): Map<String, List<StandingRow
             )
         }
         if (rows.isNotEmpty()) {
-            map[code] = rows.sortedBy { it.position }
+            map[code] = sortStandingsRows(rows, code)
         }
     }
     return map
+}
+
+private fun sortStandingsRows(rows: List<StandingRowItem>, leagueCode: String): List<StandingRowItem> {
+    val cleanCode = leagueCode.trim().uppercase(Locale.ROOT)
+    val sorted = rows.sortedWith(
+        compareByDescending<StandingRowItem> { it.points }
+            .thenByDescending { it.goalDiff }
+            .thenByDescending { it.goalsFor }
+            .thenBy { it.position }
+            .thenBy { it.teamName }
+    )
+    return if (cleanCode == "CL") {
+        sorted.mapIndexed { idx, row -> row.copy(position = idx + 1) }
+    } else {
+        sorted
+    }
 }
 
 private fun parseChannelServers(
@@ -1062,7 +1078,7 @@ private fun loadStandingsCache(context: Context, leagueCode: String): List<Stand
                 )
             )
         }
-        out
+        sortStandingsRows(out, cleanCode)
     } catch (_: Exception) {
         emptyList()
     }
@@ -1422,6 +1438,7 @@ private fun httpGetJson(urlString: String, headers: Map<String, String> = emptyM
             requestMethod = "GET"
             connectTimeout = 8000
             readTimeout = 8000
+            useCaches = false
             headers.forEach { (k, v) -> setRequestProperty(k, v) }
         }
         if (connection.responseCode in 200..299) {
@@ -1550,7 +1567,8 @@ private suspend fun fetchMatchesFiltered(
 ): List<LiveMatchItem> {
     return withContext(Dispatchers.IO) {
         val fdDeferred = async {
-            val url = "https://api.football-data.org/v4/matches?dateFrom=$dateFrom&dateTo=$dateTo"
+            val cacheBust = System.currentTimeMillis()
+            val url = "https://api.football-data.org/v4/matches?dateFrom=$dateFrom&dateTo=$dateTo&_cb=$cacheBust"
             val body = httpGetJson(url, mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY)) ?: return@async emptyList()
 
             val list = mutableListOf<LiveMatchItem>()
@@ -1682,15 +1700,15 @@ private suspend fun fetchStandingsForLeague(
         isExcludedCompetition(cleanCode, cleanCode) ||
         cleanCode in setOf("IRQ", "SAU", "ACL", "CAFCL")
     ) {
-        return customRows.orEmpty()
+        return sortStandingsRows(customRows.orEmpty(), cleanCode)
     }
 
     return withContext(Dispatchers.IO) {
-        val url = "https://api.football-data.org/v4/competitions/$cleanCode/standings"
+        val url = "https://api.football-data.org/v4/competitions/$cleanCode/standings?_cb=${System.currentTimeMillis()}"
         val body = httpGetJson(url, mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY))
 
         if (body.isNullOrBlank()) {
-            return@withContext customRows.orEmpty()
+            return@withContext sortStandingsRows(customRows.orEmpty(), cleanCode)
         }
 
         val root = JSONObject(body)
@@ -1745,7 +1763,7 @@ private suspend fun fetchStandingsForLeague(
         }
 
         if (rows.isEmpty() && !customRows.isNullOrEmpty()) {
-            return@withContext customRows
+            return@withContext sortStandingsRows(customRows, cleanCode)
         }
 
         if (!customRows.isNullOrEmpty()) {
@@ -1769,11 +1787,11 @@ private suspend fun fetchStandingsForLeague(
                 } else {
                     base
                 }
-            }.sortedBy { it.position }
-            return@withContext merged
+            }
+            return@withContext sortStandingsRows(merged, cleanCode)
         }
 
-        rows
+        sortStandingsRows(rows, cleanCode)
     }
 }
 
@@ -1832,7 +1850,7 @@ private suspend fun fetchTopScorersForLeague(
             return@withContext emptyList()
         }
 
-        val url = "https://api.football-data.org/v4/competitions/$leagueCode/scorers?limit=25"
+        val url = "https://api.football-data.org/v4/competitions/$leagueCode/scorers?limit=25&_cb=${System.currentTimeMillis()}"
         val body = httpGetJson(url, mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY)) ?: return@withContext emptyList()
 
         val root = JSONObject(body)
@@ -2029,9 +2047,13 @@ private class SystemOverlayPipManager(
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        val density = context.resources.displayMetrics.density
+        val widthPx = (230f * density).roundToInt()
+        val heightPx = (142f * density).roundToInt()
+
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            widthPx,
+            heightPx,
             typeFlag,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
@@ -2050,8 +2072,7 @@ private class SystemOverlayPipManager(
                 val activeCh = currentChannel ?: return@setContent
                 Box(
                     modifier = Modifier
-                        .width(220.dp)
-                        .height(138.dp)
+                        .fillMaxSize()
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color.Black)
                         .border(1.5.dp, ActiveGreen, RoundedCornerShape(14.dp))
@@ -3106,20 +3127,6 @@ private fun MatchesAndStandingsView(
     }
     var isLoadingAssisters by remember { mutableStateOf(assistersRows.isEmpty()) }
 
-    var tick by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(15000)
-            tick++
-            val latestToday = currentBaghdadTodayKey()
-            if (latestToday != lastObservedTodayKey) {
-                lastObservedTodayKey = latestToday
-                dayTick++
-                selectedDayKey = latestToday
-            }
-        }
-    }
-
     fun loadMatches(manual: Boolean = false) {
         scope.launch {
             if (manual) {
@@ -3220,6 +3227,25 @@ private fun MatchesAndStandingsView(
                 saveAssistsCache(context, code, fetched)
             }
             isLoadingAssisters = false
+        }
+    }
+
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(subMode, selectedStandingLeague, remoteConfig) {
+        while (true) {
+            delay(45000)
+            tick++
+            val latestToday = currentBaghdadTodayKey()
+            if (latestToday != lastObservedTodayKey) {
+                lastObservedTodayKey = latestToday
+                dayTick++
+                selectedDayKey = latestToday
+            }
+            if (subMode == 0) {
+                loadMatches(manual = false)
+            } else if (subMode == 1) {
+                loadStandings(selectedStandingLeague.code)
+            }
         }
     }
 
