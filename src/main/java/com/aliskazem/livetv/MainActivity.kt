@@ -6556,13 +6556,13 @@ private fun FullScreenStreamPlayer(
             }
         }
 
-        if (controlsVisible) {
+                if (controlsVisible) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
-                    .background(Color.Black.copy(alpha = 0.65f))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .background(Color.Black.copy(alpha = 0.62f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -6571,32 +6571,24 @@ private fun FullScreenStreamPlayer(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(ActiveGreen)
                         .clickable(onClick = onBackToChannels)
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .padding(horizontal = 6.dp, vertical = 4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = if (isArabic) "رجوع" else "Back",
                         tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = if (isArabic) "رجوع" else "Back",
+                        text = channel.name,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-
-                Text(
-                    text = channel.name,
-                    color = TextWhite,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -6604,104 +6596,91 @@ private fun FullScreenStreamPlayer(
                 ) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(PanelBg)
-                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                            .clickable(onClick = onEnterMiniWindow)
-                            .padding(horizontal = 9.dp, vertical = 5.dp)
-                    ) {
-                        Text(
-                            text = "⧉",
-                            color = ActiveGreen,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(PanelBg)
-                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                            .clickable(onClick = onReload)
-                            .padding(horizontal = 9.dp, vertical = 5.dp)
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color(0xFF1A241E).copy(alpha = 0.85f))
+                            .clickable(onClick = onReload),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "↻",
-                            color = ActiveGreen,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 12.sp
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(PanelBg)
-                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color(0xFF1A241E).copy(alpha = 0.85f))
                             .clickable(onClick = onCycleScaleMode)
-                            .padding(horizontal = 9.dp, vertical = 5.dp)
+                            .padding(horizontal = 11.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = if (isArabic) scaleMode.labelAr else scaleMode.labelEn,
-                            color = TextWhite,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                            fontSize = 12.sp,
+                            maxLines = 1
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isMuted) LiveRed else PanelBg)
-                            .border(1.dp, if (isMuted) LiveRed else BorderGreen, RoundedCornerShape(8.dp))
-                            .clickable(onClick = onToggleMute)
-                            .padding(horizontal = 9.dp, vertical = 5.dp)
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(ActiveGreen)
+                            .clickable(onClick = onEnterMiniWindow),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "⧉",
+                            color = Color.White,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(if (isMuted) LiveRed else Color(0xFF1A241E).copy(alpha = 0.85f))
+                            .clickable(onClick = onToggleMute),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = if (isMuted) "🔇" else "🔊",
                             color = Color.White,
-                            fontSize = 12.sp
+                            fontSize = 14.sp
                         )
                     }
-                }
-            }
 
-            if (displayServerIndices.size > 1) {
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 14.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color.Black.copy(alpha = 0.72f))
-                        .border(1.dp, BorderGreen, RoundedCornerShape(14.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    displayServerIndices.forEachIndexed { displayIdx, actualIdx ->
+                    displayServerIndices.asReversed().forEachIndexed { revIdx, actualIdx ->
                         val activeSrv = actualIdx == selectedServerIndex
+                        val serverNumber = displayServerIndices.size - revIdx
                         Box(
                             modifier = Modifier
+                                .size(34.dp)
                                 .clip(RoundedCornerShape(9.dp))
-                                .background(if (activeSrv) ActiveGreen else PanelBg)
-                                .border(1.dp, if (activeSrv) ActiveGreen else BorderGreen, RoundedCornerShape(9.dp))
-                                .clickable { onSelectServer(actualIdx) }
-                                .padding(horizontal = 12.dp, vertical = 5.dp)
+                                .background(if (activeSrv) ActiveGreen else Color(0xFF1A241E).copy(alpha = 0.85f))
+                                .clickable { onSelectServer(actualIdx) },
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = if (isArabic) "سيرفر ${displayIdx + 1}" else "Server ${displayIdx + 1}",
-                                color = if (activeSrv) Color.White else TextMuted,
+                                text = "$serverNumber",
+                                color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
+                                fontSize = 13.sp
                             )
                         }
                     }
                 }
             }
         }
-    }
-}
+
 
 @Composable
 private fun AccountsTabView(accounts: List<SocialAccountItem>) {
