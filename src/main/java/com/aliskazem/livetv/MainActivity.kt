@@ -762,6 +762,14 @@ private val ARABIC_TO_ENGLISH_PLAYERS: Map<String, String> by lazy {
     map
 }
 
+private fun applyScreenOrientationForMode(activity: Activity?, isLandscapeStream: Boolean) {
+    activity?.requestedOrientation = if (isLandscapeStream) {
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    } else {
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+    }
+}
+
 private fun resolveCategoryId(raw: String, index: Int): CategoryId {
     return when (raw.trim().uppercase(Locale.ROOT)) {
         "BEIN" -> CategoryId.BEIN
@@ -3432,7 +3440,7 @@ private class SystemOverlayPipManager(
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
         super.onCreate(savedInstanceState)
         AppContextHolder.appContext = applicationContext
 
@@ -3850,6 +3858,18 @@ fun AliKazemSportApp(
             ?: liveCategories.asSequence().flatMap { it.channels.asSequence() }.find { it.id == chId }
     }
 
+    val showFullScreenPlayer = selectedChannel != null && !isMiniWindow
+
+    LaunchedEffect(activity, showFullScreenPlayer) {
+        applyScreenOrientationForMode(activity, isLandscapeStream = showFullScreenPlayer)
+    }
+
+    DisposableEffect(activity) {
+        onDispose {
+            applyScreenOrientationForMode(activity, isLandscapeStream = false)
+        }
+    }
+
     val serverOptions = remember(selectedChannel) {
         selectedChannel?.effectiveServers().orEmpty()
     }
@@ -3883,6 +3903,7 @@ fun AliKazemSportApp(
             onExpandToApp = { ch ->
                 selectedChannelId = ch.id
                 isMiniWindow = false
+                applyScreenOrientationForMode(activity, isLandscapeStream = true)
                 val launchIntent = Intent(context.applicationContext, MainActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 }
@@ -3892,6 +3913,7 @@ fun AliKazemSportApp(
                 isMiniWindow = false
                 selectedChannelId = null
                 selectedServerIndex = 0
+                applyScreenOrientationForMode(activity, isLandscapeStream = false)
                 sharedExoPlayer.stop()
             }
         )
@@ -3978,7 +4000,6 @@ fun AliKazemSportApp(
     }
 
     val layoutDir = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
-    val showFullScreenPlayer = selectedChannel != null && !isMiniWindow
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDir) {
         Box(
@@ -5975,7 +5996,7 @@ private fun MatchesAndStandingsView(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (isArabic) "الاسيست" else "Assists",
+                            text = if (isArabic) "صناع الأهداف" else "Top Assists",
                             color = if (showAssistsMode) Color.White else TextMuted,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp
@@ -5985,10 +6006,10 @@ private fun MatchesAndStandingsView(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                val activeListRows = if (showAssistsMode) assistersRows else scorersRows
+                val activeRows = if (showAssistsMode) assistersRows else scorersRows
                 val activeLoading = if (showAssistsMode) isLoadingAssisters else isLoadingScorers
 
-                if (activeLoading && activeListRows.isEmpty()) {
+                if (activeLoading && activeRows.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -5997,7 +6018,7 @@ private fun MatchesAndStandingsView(
                     ) {
                         CircularProgressIndicator(color = ActiveGreen)
                     }
-                } else if (activeListRows.isEmpty()) {
+                } else if (activeRows.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -6008,12 +6029,10 @@ private fun MatchesAndStandingsView(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (isArabic) {
-                                if (showAssistsMode) "لا توجد بيانات صناعة الأهداف لهذه البطولة حالياً"
-                                else "لا توجد بيانات هدافين متاحة لهذه البطولة حالياً"
+                            text = if (showAssistsMode) {
+                                if (isArabic) "لا توجد بيانات صناع أهداف متاحة لهذه البطولة حالياً" else "No assists data available for this league"
                             } else {
-                                if (showAssistsMode) "No assists data available for this league"
-                                else "No top scorers data available for this league"
+                                if (isArabic) "لا توجد بيانات هدافين متاحة لهذه البطولة حالياً" else "No top scorers data available for this league"
                             },
                             color = TextMuted,
                             fontSize = 13.sp,
@@ -6026,23 +6045,14 @@ private fun MatchesAndStandingsView(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(bottom = 20.dp)
                     ) {
-                        items(activeListRows, key = { "${it.rank}_${it.playerName}_${it.teamName}" }) { row ->
-                            val playerLbl = translatePlayerName(
-                                row.rawPlayerName ?: row.playerName,
-                                remoteConfig.playerOverrides,
-                                remoteConfig.teamOverrides,
-                                isArabic
-                            )
-                            val teamLbl = translateTeamName(
-                                row.rawTeamName ?: row.teamName,
-                                remoteConfig.teamOverrides,
-                                isArabic
-                            )
-                            val statNumber = if (showAssistsMode) row.assists else row.goals
+                        items(activeRows, key = { "${it.rank}_${it.playerName}_${it.teamName}" }) { row ->
+                            val playerLbl = translatePlayerName(row.rawPlayerName ?: row.playerName, remoteConfig.playerOverrides, remoteConfig.teamOverrides, isArabic)
+                            val teamLbl = translateTeamName(row.rawTeamName ?: row.teamName, remoteConfig.teamOverrides, isArabic)
+                            val statCount = if (showAssistsMode) row.assists else row.goals
                             val statUnit = if (showAssistsMode) {
                                 if (isArabic) "اسيست" else "AST"
                             } else {
-                                if (isArabic) "أهداف" else "GOALS"
+                                if (isArabic) "هدف" else "GOALS"
                             }
 
                             Row(
@@ -6073,7 +6083,7 @@ private fun MatchesAndStandingsView(
                                         color = if (row.rank <= 3) ActiveGreen else TextMuted,
                                         fontWeight = FontWeight.ExtraBold,
                                         fontSize = 13.sp,
-                                        modifier = Modifier.width(20.dp)
+                                        modifier = Modifier.width(22.dp)
                                     )
                                     RemoteCrestBadge(
                                         crestUrl = row.teamCrestUrl,
@@ -6099,27 +6109,16 @@ private fun MatchesAndStandingsView(
                                     }
                                 }
 
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                Text(
+                                    text = "$statCount $statUnit",
+                                    color = ActiveGreen,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 12.sp,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(TileInnerBg)
-                                        .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
+                                        .background(ActiveGreen.copy(alpha = 0.16f))
                                         .padding(horizontal = 10.dp, vertical = 5.dp)
-                                ) {
-                                    Text(
-                                        text = "$statNumber",
-                                        color = ActiveGreen,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 14.sp
-                                    )
-                                    Text(
-                                        text = statUnit,
-                                        color = TextMuted,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                )
                             }
                         }
                     }
@@ -6129,57 +6128,120 @@ private fun MatchesAndStandingsView(
     }
 }
 
-private data class MatchStatusBadge(
+private data class MatchBadgeInfo(
     val label: String,
     val isLive: Boolean
 )
 
-private fun buildMatchStatusBadge(match: LiveMatchItem, isArabic: Boolean = true): MatchStatusBadge {
-    if (match.status == MatchFeedStatus.FINISHED) {
-        return MatchStatusBadge(if (isArabic) "انتهت" else "FT", isLive = false)
-    }
-    if (match.status == MatchFeedStatus.HALFTIME) {
-        return MatchStatusBadge(if (isArabic) "استراحة" else "HT", isLive = true)
-    }
-
-    val nowEpochSec = System.currentTimeMillis() / 1000L
-    val startEpochSec = try {
-        Instant.parse(match.utcIso).epochSecond
-    } catch (_: Exception) {
-        null
-    }
-
-    if (startEpochSec != null) {
-        val diffSec = nowEpochSec - startEpochSec
-        if (diffSec >= 0) {
-            val elapsedMin = (diffSec / 60L).toInt()
-            return when {
-                elapsedMin in 0..45 -> {
-                    val disp = if (elapsedMin == 0) 1 else elapsedMin
-                    MatchStatusBadge(if (isArabic) "مباشر $disp'" else "LIVE $disp'", isLive = true)
-                }
-                elapsedMin in 46..60 -> {
-                    MatchStatusBadge(if (isArabic) "استراحة" else "HT", isLive = true)
-                }
-                elapsedMin in 61..115 -> {
-                    val dispMin = (elapsedMin - 15).coerceAtMost(90)
-                    MatchStatusBadge(if (isArabic) "مباشر $dispMin'" else "LIVE $dispMin'", isLive = true)
-                }
-                else -> {
-                    MatchStatusBadge(if (isArabic) "انتهت" else "FT", isLive = false)
-                }
-            }
-        }
-    }
+private fun buildMatchStatusBadge(match: LiveMatchItem, isArabic: Boolean): MatchBadgeInfo {
+    val hasScores = (match.homeScore ?: 0) > 0 || (match.awayScore ?: 0) > 0
 
     return when (match.status) {
         MatchFeedStatus.LIVE -> {
-            val minTxt = match.minute?.takeIf { it.isNotBlank() }?.let { " $it'" } ?: ""
-            MatchStatusBadge((if (isArabic) "مباشر" else "LIVE") + minTxt, isLive = true)
+            val minLbl = match.minute?.takeIf { it.isNotBlank() }?.let { if (it.endsWith("'")) it else "$it'" }
+            MatchBadgeInfo(
+                label = minLbl ?: if (isArabic) "مباشر" else "LIVE",
+                isLive = true
+            )
         }
-        MatchFeedStatus.HALFTIME -> MatchStatusBadge(if (isArabic) "استراحة" else "HT", isLive = true)
-        MatchFeedStatus.FINISHED -> MatchStatusBadge(if (isArabic) "انتهت" else "FT", isLive = false)
-        MatchFeedStatus.SCHEDULED -> MatchStatusBadge(if (isArabic) "لم تبدأ" else "Upcoming", isLive = false)
+        MatchFeedStatus.HALFTIME -> MatchBadgeInfo(
+            label = if (isArabic) "استراحة" else "HT",
+            isLive = true
+        )
+        MatchFeedStatus.FINISHED -> MatchBadgeInfo(
+            label = if (isArabic) "انتهت" else "FT",
+            isLive = false
+        )
+        MatchFeedStatus.SCHEDULED -> {
+            if (hasScores) {
+                val minLbl = match.minute?.takeIf { it.isNotBlank() }?.let { if (it.endsWith("'")) it else "$it'" }
+                MatchBadgeInfo(
+                    label = minLbl ?: if (isArabic) "مباشر" else "LIVE",
+                    isLive = true
+                )
+            } else {
+                MatchBadgeInfo(
+                    label = if (isArabic) "لم تبدأ" else "Scheduled",
+                    isLive = false
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountsTabView(accounts: List<SocialAccountItem>) {
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        accounts.forEach { acc ->
+            val drawableId = rememberDrawableId(acc.logoAssetName)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(PanelBg)
+                    .border(1.dp, BorderGreen, RoundedCornerShape(18.dp))
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(acc.url)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(acc.badgeBg)
+                            .border(1.dp, BorderGreen, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (drawableId != 0) {
+                            Image(
+                                painter = painterResource(id = drawableId),
+                                contentDescription = acc.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Text(
+                                text = acc.fallbackGlyph,
+                                color = acc.badgeTextColor,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = acc.title,
+                        color = TextWhite,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Text(
+                    text = "↗",
+                    color = ActiveGreen,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 
@@ -6191,13 +6253,10 @@ private fun TopNavTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bg = if (selected) ActiveGreen else Color.Transparent
-    val fg = if (selected) Color.White else TextMuted
-
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(15.dp))
-            .background(bg)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) ActiveGreen else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -6205,15 +6264,15 @@ private fun TopNavTab(
     ) {
         Text(
             text = iconGlyph,
-            color = fg,
-            fontSize = 13.sp,
+            color = if (selected) Color.White else TextMuted,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.width(5.dp))
         Text(
             text = label,
-            color = fg,
-            fontSize = 12.sp,
+            color = if (selected) Color.White else TextMuted,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             softWrap = false,
@@ -6235,10 +6294,47 @@ private fun CategoriesGridView(
         contentPadding = PaddingValues(bottom = 20.dp)
     ) {
         items(categories, key = { it.id.name }) { category ->
-            CategoryCardTile(
-                category = category,
-                onClick = { onSelectCategory(category) }
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(TileBg)
+                    .border(1.5.dp, BorderGreen, RoundedCornerShape(22.dp))
+                    .clickable { onSelectCategory(category) }
+                    .padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(112.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(TileInnerBg)
+                        .border(1.dp, BorderGreen.copy(alpha = 0.7f), RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    BrandBadgeArt(
+                        assetName = category.logoAssetName,
+                        badgeText = category.badgeText,
+                        badgeBg = category.badgeBg,
+                        badgeTextColor = category.badgeTextColor,
+                        logoUrl = category.logoUrl,
+                        large = true
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = category.name,
+                    color = TextWhite,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
@@ -6264,9 +6360,10 @@ private fun CategoryChannelsGridView(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(TileInnerBg)
+                    .background(ActiveGreen.copy(alpha = 0.16f))
                     .clickable(onClick = onBackToCategories)
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
@@ -6276,27 +6373,26 @@ private fun CategoryChannelsGridView(
                     tint = ActiveGreen,
                     modifier = Modifier.size(16.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = if (isArabic) "الفئات" else "Categories",
-                    color = TextWhite,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    text = if (isArabic) "الباقات" else "Categories",
+                    color = ActiveGreen,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
                 )
             }
 
             Text(
                 text = category.name,
                 color = TextWhite,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
             )
 
             Text(
-                text = if (isArabic) "${category.channels.size} قناة" else "${category.channels.size} CH",
-                color = ActiveGreen,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
+                text = "${category.channels.size}",
+                color = TextMuted,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
             )
         }
 
@@ -6310,166 +6406,53 @@ private fun CategoryChannelsGridView(
             contentPadding = PaddingValues(bottom = 20.dp)
         ) {
             items(category.channels, key = { it.id }) { channel ->
-                ChannelCardTile(
-                    channel = channel,
-                    isSelected = selectedChannel?.id == channel.id,
-                    onClick = { onSelectChannel(channel) }
-                )
+                val isSelected = selectedChannel?.id == channel.id
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(TileBg)
+                        .border(
+                            width = if (isSelected) 2.dp else 1.5.dp,
+                            color = if (isSelected) ActiveGreen else BorderGreen,
+                            shape = RoundedCornerShape(22.dp)
+                        )
+                        .clickable { onSelectChannel(channel) }
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(104.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(TileInnerBg)
+                            .border(1.dp, BorderGreen.copy(alpha = 0.7f), RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BrandBadgeArt(
+                            assetName = channel.logoAssetName,
+                            badgeText = channel.badgeText,
+                            badgeBg = channel.badgeBg,
+                            badgeTextColor = channel.badgeTextColor,
+                            logoUrl = channel.logoUrl,
+                            large = false
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = channel.name,
+                        color = if (isSelected) ActiveGreen else TextWhite,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
-        }
-    }
-}
-
-@Composable
-private fun CategoryCardTile(
-    category: CategoryItem,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(TileBg)
-            .border(1.5.dp, BorderGreen, RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(82.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(TileInnerBg),
-            contentAlignment = Alignment.Center
-        ) {
-            LogoArtwork(
-                assetName = category.logoAssetName,
-                imageUrl = category.logoUrl,
-                badgeText = category.badgeText,
-                badgeBg = category.badgeBg,
-                badgeTextColor = category.badgeTextColor
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Text(
-            text = category.name,
-            color = TextWhite,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun ChannelCardTile(
-    channel: ChannelItem,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val borderColor = if (isSelected) ActiveGreen else BorderGreen
-    val borderWidth = if (isSelected) 2.dp else 1.5.dp
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(TileBg)
-            .border(borderWidth, borderColor, RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(82.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(TileInnerBg),
-            contentAlignment = Alignment.Center
-        ) {
-            LogoArtwork(
-                assetName = channel.logoAssetName,
-                imageUrl = channel.logoUrl,
-                badgeText = channel.badgeText,
-                badgeBg = channel.badgeBg,
-                badgeTextColor = channel.badgeTextColor
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Text(
-            text = channel.name,
-            color = if (isSelected) ActiveGreen else TextWhite,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun LogoArtwork(
-    assetName: String,
-    imageUrl: String? = null,
-    badgeText: String,
-    badgeBg: Color,
-    badgeTextColor: Color
-) {
-    var remoteBitmap by remember(imageUrl) {
-        mutableStateOf(imageUrl?.let { CrestMemoryCache.get(it) })
-    }
-
-    LaunchedEffect(imageUrl) {
-        if (remoteBitmap == null && !imageUrl.isNullOrBlank()) {
-            remoteBitmap = fetchBitmapFromUrl(imageUrl)
-        }
-    }
-
-    val loadedRemote = remoteBitmap
-    val drawableId = rememberDrawableId(assetName)
-
-    if (loadedRemote != null) {
-        Image(
-            bitmap = loadedRemote.asImageBitmap(),
-            contentDescription = badgeText,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp)
-        )
-    } else if (drawableId != 0) {
-        Image(
-            painter = painterResource(id = drawableId),
-            contentDescription = badgeText,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp)
-        )
-    } else {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .background(badgeBg)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = badgeText,
-                color = badgeTextColor,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = if (badgeText.length <= 2) 20.sp else 13.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 15.sp,
-                maxLines = 2
-            )
         }
     }
 }
@@ -6491,8 +6474,20 @@ private fun FullScreenStreamPlayer(
     onBackToChannels: () -> Unit
 ) {
     var controlsVisible by remember { mutableStateOf(true) }
-    val servers = channel.effectiveServers()
-    val resizeMode = when (scaleMode) {
+    val servers = remember(channel) { channel.effectiveServers() }
+    val activeServerIndices = remember(servers) {
+        servers.indices.filter { servers[it].active }
+    }
+    val visibleServerIndices = if (activeServerIndices.isNotEmpty()) activeServerIndices else servers.indices.toList()
+
+    LaunchedEffect(controlsVisible, channel.id, selectedServerIndex) {
+        if (controlsVisible) {
+            delay(4500)
+            controlsVisible = false
+        }
+    }
+
+    val exoResizeMode = when (scaleMode) {
         PlayerScaleMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
         PlayerScaleMode.FIT_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
     }
@@ -6501,7 +6496,7 @@ private fun FullScreenStreamPlayer(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(controlsVisible) {
+            .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { controlsVisible = !controlsVisible }
                 )
@@ -6512,18 +6507,18 @@ private fun FullScreenStreamPlayer(
                 PlayerView(ctx).apply {
                     player = exoPlayer
                     useController = false
-                    this.resizeMode = resizeMode
+                    resizeMode = exoResizeMode
                 }
             },
-            update = { pv ->
-                pv.player = exoPlayer
-                pv.resizeMode = resizeMode
+            update = { playerView ->
+                playerView.player = exoPlayer
+                playerView.resizeMode = exoResizeMode
             },
             modifier = Modifier.fillMaxSize()
         )
 
         if (controlsVisible) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
@@ -6532,139 +6527,136 @@ private fun FullScreenStreamPlayer(
                             colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent)
                         )
                     )
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, CircleShape)
+                            .clickable(onClick = onBackToChannels),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(PanelBg.copy(alpha = 0.92f))
-                                .border(1.dp, BorderGreen, CircleShape)
-                                .clickable(onClick = onBackToChannels),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = if (isArabic) "رجوع" else "Back",
-                                tint = TextWhite,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(PanelBg.copy(alpha = 0.92f))
-                                .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
-                                .clickable(onClick = onToggleMute)
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (isMuted) "🔇" else "🔊",
-                                fontSize = 14.sp
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(PanelBg.copy(alpha = 0.92f))
-                                .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
-                                .clickable(onClick = onCycleScaleMode)
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (isArabic) scaleMode.labelAr else scaleMode.labelEn,
-                                color = ActiveGreen,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(PanelBg.copy(alpha = 0.92f))
-                                .border(1.dp, BorderGreen, CircleShape)
-                                .clickable(onClick = onReload),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = if (isArabic) "إعادة تحميل" else "Reload",
-                                tint = ActiveGreen,
-                                modifier = Modifier.size(17.dp)
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(PanelBg.copy(alpha = 0.92f))
-                                .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
-                                .clickable(onClick = onEnterMiniWindow)
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "◱",
-                                color = ActiveGreen,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = if (isArabic) "رجوع" else "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
 
                     Text(
                         text = channel.name,
-                        color = TextWhite,
-                        fontSize = 14.sp,
+                        color = Color.White,
                         fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                if (servers.size > 1) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        servers.forEachIndexed { idx, srv ->
-                            val isCurrent = idx == selectedServerIndex
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isCurrent) ActiveGreen else PanelBg.copy(alpha = 0.9f))
-                                    .border(1.dp, if (isCurrent) ActiveGreen else BorderGreen, RoundedCornerShape(10.dp))
-                                    .clickable { onSelectServer(idx) }
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = if (isArabic) "سيرفر ${idx + 1}" else "Server ${idx + 1}",
-                                    color = if (isCurrent) Color.White else TextMuted,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    visibleServerIndices.forEachIndexed { displayOrder, realIdx ->
+                        val isSrvSelected = realIdx == selectedServerIndex
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSrvSelected) ActiveGreen else Color.Black.copy(alpha = 0.65f))
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isSrvSelected) ActiveGreen else BorderGreen,
+                                    shape = RoundedCornerShape(8.dp)
                                 )
-                            }
+                                .clickable { onSelectServer(realIdx) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${displayOrder + 1}",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                maxLines = 1
+                            )
                         }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                            .clickable(onClick = onToggleMute)
+                            .padding(horizontal = 9.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isMuted) "🔇" else "🔊",
+                            color = Color.White,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                            .clickable(onClick = onEnterMiniWindow)
+                            .padding(horizontal = 9.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "⧉",
+                            color = ActiveGreen,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                            .clickable(onClick = onCycleScaleMode)
+                            .padding(horizontal = 9.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isArabic) scaleMode.labelAr else scaleMode.labelEn,
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                            .clickable(onClick = onReload),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = if (isArabic) "إعادة تحميل" else "Reload",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 }
             }
@@ -6673,59 +6665,68 @@ private fun FullScreenStreamPlayer(
 }
 
 @Composable
-private fun AccountsTabView(accounts: List<SocialAccountItem>) {
-    val context = LocalContext.current
+private fun BrandBadgeArt(
+    assetName: String,
+    badgeText: String,
+    badgeBg: Color,
+    badgeTextColor: Color,
+    logoUrl: String? = null,
+    large: Boolean
+) {
+    var remoteBitmap by remember(logoUrl) {
+        mutableStateOf(logoUrl?.let { CrestMemoryCache.get(it) })
+    }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 20.dp)
-    ) {
-        items(accounts, key = { it.id }) { account ->
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(TileBg)
-                    .border(1.5.dp, BorderGreen, RoundedCornerShape(22.dp))
-                    .clickable {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(account.url))
-                        context.startActivity(intent)
-                    }
-                    .padding(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(82.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(TileInnerBg),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LogoArtwork(
-                        assetName = account.logoAssetName,
-                        imageUrl = account.logoUrl,
-                        badgeText = account.fallbackGlyph,
-                        badgeBg = account.badgeBg,
-                        badgeTextColor = account.badgeTextColor
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = account.title,
-                    color = TextWhite,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+    LaunchedEffect(logoUrl) {
+        if (remoteBitmap == null && !logoUrl.isNullOrBlank()) {
+            remoteBitmap = fetchBitmapFromUrl(logoUrl)
         }
+    }
+
+    val loadedBmp = remoteBitmap
+    if (loadedBmp != null) {
+        Image(
+            bitmap = loadedBmp.asImageBitmap(),
+            contentDescription = badgeText,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+        )
+        return
+    }
+
+    val drawableId = rememberDrawableId(assetName)
+    if (drawableId != 0) {
+        Image(
+            painter = painterResource(id = drawableId),
+            contentDescription = badgeText,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+        )
+        return
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(if (large) 0.78f else 0.72f)
+            .height(if (large) 56.dp else 44.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(badgeBg),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = badgeText,
+            color = badgeTextColor,
+            fontSize = if (large) 15.sp else 12.sp,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
+            lineHeight = if (large) 17.sp else 14.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
