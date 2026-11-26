@@ -6419,7 +6419,18 @@ private fun FullScreenStreamPlayer(
     var controlsVisible by remember { mutableStateOf(true) }
     var isBuffering by remember { mutableStateOf(true) }
     var hasError by remember { mutableStateOf(false) }
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = (view.context as? Activity)?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        controller?.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller?.hide(WindowInsetsCompat.Type.systemBars())
 
+        onDispose {
+            controller?.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
     val serverOptions = remember(channel) {
         channel.effectiveServers()
     }
@@ -6556,125 +6567,127 @@ private fun FullScreenStreamPlayer(
             }
         }
 
-        if (controlsVisible) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .background(Color.Black.copy(alpha = 0.62f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+                if (controlsVisible) {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable(onClick = onBackToChannels)
-                        .padding(horizontal = 6.dp, vertical = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = if (isArabic) "رجوع" else "Back",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = channel.name,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Row(
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .background(Color.Black.copy(alpha = 0.62f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Box(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(Color(0xFF1A241E).copy(alpha = 0.85f))
-                            .clickable(onClick = onReload),
-                        contentAlignment = Alignment.Center
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(onClick = onBackToChannels)
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = if (isArabic) "رجوع" else "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Text(
-                            text = "↻",
+                            text = channel.name,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(Color(0xFF1A241E).copy(alpha = 0.85f))
-                            .clickable(onClick = onCycleScaleMode)
-                            .padding(horizontal = 11.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = if (isArabic) scaleMode.labelAr else scaleMode.labelEn,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            maxLines = 1
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(ActiveGreen)
-                            .clickable(onClick = onEnterMiniWindow),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "⧉",
-                            color = Color.White,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 14.sp
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(if (isMuted) LiveRed else Color(0xFF1A241E).copy(alpha = 0.85f))
-                            .clickable(onClick = onToggleMute),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (isMuted) "🔇" else "🔊",
-                            color = Color.White,
-                            fontSize = 14.sp
-                        )
-                    }
-
-                    displayServerIndices.asReversed().forEachIndexed { revIdx, actualIdx ->
-                        val activeSrv = actualIdx == selectedServerIndex
-                        val serverNumber = displayServerIndices.size - revIdx
                         Box(
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(RoundedCornerShape(9.dp))
-                                .background(if (activeSrv) ActiveGreen else Color(0xFF1A241E).copy(alpha = 0.85f))
-                                .clickable { onSelectServer(actualIdx) },
+                                .background(Color(0xFF1A241E).copy(alpha = 0.85f))
+                                .clickable(onClick = onReload),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "$serverNumber",
+                                text = "↻",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
+                                fontSize = 15.sp
                             )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(9.dp))
+                                .background(Color(0xFF1A241E).copy(alpha = 0.85f))
+                                .clickable(onClick = onCycleScaleMode)
+                                .padding(horizontal = 11.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isArabic) scaleMode.labelAr else scaleMode.labelEn,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                maxLines = 1
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(9.dp))
+                                .background(ActiveGreen)
+                                .clickable(onClick = onEnterMiniWindow),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "⧉",
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(9.dp))
+                                .background(if (isMuted) LiveRed else Color(0xFF1A241E).copy(alpha = 0.85f))
+                                .clickable(onClick = onToggleMute),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isMuted) "🔇" else "🔊",
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        displayServerIndices.asReversed().forEachIndexed { revIdx, actualIdx ->
+                            val activeSrv = actualIdx == selectedServerIndex
+                            val serverNumber = displayServerIndices.size - revIdx
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(if (activeSrv) ActiveGreen else Color(0xFF1A241E).copy(alpha = 0.85f))
+                                    .clickable { onSelectServer(actualIdx) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "$serverNumber",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
                         }
                     }
                 }
