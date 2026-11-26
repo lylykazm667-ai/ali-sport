@@ -6556,7 +6556,7 @@ private fun FullScreenStreamPlayer(
             }
         }
 
-                if (controlsVisible) {
+        if (controlsVisible) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -6680,7 +6680,8 @@ private fun FullScreenStreamPlayer(
                 }
             }
         }
-
+    }
+}
 
 @Composable
 private fun AccountsTabView(accounts: List<SocialAccountItem>) {
@@ -6738,6 +6739,7 @@ private fun AccountsTabView(accounts: List<SocialAccountItem>) {
         }
     }
 }
+
 
 @Composable
 private fun BrandLogoBadge(
