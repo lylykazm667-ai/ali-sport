@@ -6173,37 +6173,45 @@ private fun buildMatchStatusBadge(match: LiveMatchItem, isArabic: Boolean): Matc
 private fun AccountsTabView(accounts: List<SocialAccountItem>) {
     val context = LocalContext.current
 
-    Column(
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 20.dp)
     ) {
-        accounts.forEach { acc ->
+        items(accounts, key = { it.id }) { acc ->
             val drawableId = rememberDrawableId(acc.logoAssetName)
-            Row(
+
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(PanelBg)
-                    .border(1.dp, BorderGreen, RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(TileBg)
+                    .border(1.5.dp, BorderGreen, RoundedCornerShape(22.dp))
                     .clickable {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(acc.url)).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         context.startActivity(intent)
                     }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(104.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(TileInnerBg)
+                        .border(1.dp, BorderGreen.copy(alpha = 0.7f), RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(52.dp)
                             .clip(CircleShape)
                             .background(acc.badgeBg)
                             .border(1.dp, BorderGreen, CircleShape),
@@ -6220,30 +6228,29 @@ private fun AccountsTabView(accounts: List<SocialAccountItem>) {
                             Text(
                                 text = acc.fallbackGlyph,
                                 color = acc.badgeTextColor,
-                                fontSize = 18.sp,
+                                fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
-
-                    Text(
-                        text = acc.title,
-                        color = TextWhite,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text(
-                    text = "↗",
-                    color = ActiveGreen,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    text = acc.title,
+                    color = TextWhite,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
                 )
             }
         }
     }
 }
+
 
 @Composable
 private fun TopNavTab(
