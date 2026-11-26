@@ -6567,11 +6567,10 @@ private fun FullScreenStreamPlayer(
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = if (isArabic) "الصوت" else "Audio",
-                                tint = if (isMuted) LiveRed else Color.White,
-                                modifier = Modifier.size(18.dp)
+                            Text(
+    text = if (isMuted) "🔇" else "🔊",
+    fontSize = 14.sp
+)
                             )
                         }
 
@@ -6586,11 +6585,12 @@ private fun FullScreenStreamPlayer(
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.PictureInPictureAlt,
-                                contentDescription = if (isArabic) "نافذة مصغرة" else "Mini Window",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
+                            Text(
+    text = "⧉",
+    color = Color.White,
+    fontWeight = FontWeight.Bold,
+    fontSize = 14.sp
+)
                             )
                         }
 
