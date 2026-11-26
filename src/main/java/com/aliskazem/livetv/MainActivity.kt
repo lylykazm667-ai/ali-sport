@@ -6548,128 +6548,449 @@ private fun FullScreenStreamPlayer(
                             .size(34.dp)
                             .clip(CircleShape)
                             .background(Color.Black.copy(alpha = 0.65f))
-                            .border(1.dp, BorderGreen, CircleShape)
-                            .clickable(onClick = onBackToChannels),
-                        contentAlignment = Alignment.Center
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+private fun FullScreenStreamPlayer(
+    channel: ChannelItem,
+    exoPlayer: ExoPlayer,
+    selectedServerIndex: Int,
+    isMuted: Boolean,
+    scaleMode: PlayerScaleMode,
+    isArabic: Boolean,
+    onToggleMute: () -> Unit,
+    onCycleScaleMode: () -> Unit,
+    onReload: () -> Unit,
+    onEnterMiniWindow: () -> Unit,
+    onSelectServer: (Int) -> Unit,
+    onBackToChannels: () -> Unit
+) {
+    val context = LocalContext.current
+    val activity = context as? Activity
+    var controlsVisible by remember { mutableStateOf(true) }
+    val servers = remember(channel) { channel.effectiveServers() }
+    val activeServerIndices = remember(servers) {
+        servers.indices.filter { servers[it].active }
+    }
+    val visibleServerIndices = if (activeServerIndices.isNotEmpty()) activeServerIndices else servers.indices.toList()
+
+    DisposableEffect(activity) {
+        val window = activity?.window
+        val decorView = window?.decorView
+        @Suppress("DEPRECATION")
+        val oldFlags = decorView?.systemUiVisibility ?: 0
+        if (decorView != null) {
+            @Suppress("DEPRECATION")
+            decorView.systemUiVisibility =
+                android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                    android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        }
+        onDispose {
+            if (decorView != null) {
+                @Suppress("DEPRECATION")
+                decorView.systemUiVisibility = oldFlags
+            }
+        }
+    }
+
+    LaunchedEffect(controlsVisible, channel.id, selectedServerIndex) {
+        if (controlsVisible) {
+            delay(4500)
+            controlsVisible = false
+        }
+    }
+
+    val exoResizeMode = when (scaleMode) {
+        PlayerScaleMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+        PlayerScaleMode.FIT_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { controlsVisible = !controlsVisible }
+                )
+            }
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    resizeMode = exoResizeMode
+                }
+            },
+            update = { playerView ->
+                playerView.player = exoPlayer
+                playerView.resizeMode = exoResizeMode
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        if (controlsVisible) {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent)
+                            )
+                        )
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = if (isArabic) "رجوع" else "Back",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, CircleShape)
+                                .clickable(onClick = onBackToChannels),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = if (isArabic) "رجوع" else "Back",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Text(
+                            text = channel.name,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    Text(
-                        text = channel.name,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                .clickable(onClick = onReload),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = if (isArabic) "إعادة تحميل" else "Reload",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    visibleServerIndices.forEachIndexed { displayOrder, realIdx ->
-                        val isSrvSelected = realIdx == selectedServerIndex
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSrvSelected) ActiveGreen else Color.Black.copy(alpha = 0.65f))
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isSrvSelected) ActiveGreen else BorderGreen,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .clickable { onSelectServer(realIdx) }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                .clickable(onClick = onCycleScaleMode)
+                                .padding(horizontal = 9.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "${displayOrder + 1}",
+                                text = if (isArabic) scaleMode.labelAr else scaleMode.labelEn,
                                 color = Color.White,
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                maxLines = 1
+                                fontWeight = FontWeight.Bold
                             )
                         }
-                    }
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.65f))
-                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                            .clickable(onClick = onToggleMute)
-                            .padding(horizontal = 9.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                .clickable(onClick = onEnterMiniWindow)
+                                .padding(horizontal = 9.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "⧉",
+                                color = ActiveGreen,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                .clickable(onClick = onToggleMute)
+                                .padding(horizontal = 9.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isMuted) "🔇" else "🔊",
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        visibleServerIndices.reversed().forEach { realIdx ->
+                            val displayNumber = visibleServerIndices.indexOf(realIdx) + 1
+                            val isSrvSelected = realIdx == selectedServerIndex
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+private fun FullScreenStreamPlayer(
+    channel: ChannelItem,
+    exoPlayer: ExoPlayer,
+    selectedServerIndex: Int,
+    isMuted: Boolean,
+    scaleMode: PlayerScaleMode,
+    isArabic: Boolean,
+    onToggleMute: () -> Unit,
+    onCycleScaleMode: () -> Unit,
+    onReload: () -> Unit,
+    onEnterMiniWindow: () -> Unit,
+    onSelectServer: (Int) -> Unit,
+    onBackToChannels: () -> Unit
+) {
+    val context = LocalContext.current
+    val activity = context as? Activity
+    var controlsVisible by remember { mutableStateOf(true) }
+    val servers = remember(channel) { channel.effectiveServers() }
+    val activeServerIndices = remember(servers) {
+        servers.indices.filter { servers[it].active }
+    }
+    val visibleServerIndices = if (activeServerIndices.isNotEmpty()) activeServerIndices else servers.indices.toList()
+
+    DisposableEffect(activity) {
+        val window = activity?.window
+        val decorView = window?.decorView
+        @Suppress("DEPRECATION")
+        val oldFlags = decorView?.systemUiVisibility ?: 0
+        if (decorView != null) {
+            @Suppress("DEPRECATION")
+            decorView.systemUiVisibility =
+                android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                    android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        }
+        onDispose {
+            if (decorView != null) {
+                @Suppress("DEPRECATION")
+                decorView.systemUiVisibility = oldFlags
+            }
+        }
+    }
+
+    LaunchedEffect(controlsVisible, channel.id, selectedServerIndex) {
+        if (controlsVisible) {
+            delay(4500)
+            controlsVisible = false
+        }
+    }
+
+    val exoResizeMode = when (scaleMode) {
+        PlayerScaleMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+        PlayerScaleMode.FIT_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { controlsVisible = !controlsVisible }
+                )
+            }
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    resizeMode = exoResizeMode
+                }
+            },
+            update = { playerView ->
+                playerView.player = exoPlayer
+                playerView.resizeMode = exoResizeMode
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        if (controlsVisible) {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent)
+                            )
+                        )
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, CircleShape)
+                                .clickable(onClick = onBackToChannels),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = if (isArabic) "رجوع" else "Back",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
                         Text(
-                            text = if (isMuted) "🔇" else "🔊",
+                            text = channel.name,
                             color = Color.White,
-                            fontSize = 12.sp
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.65f))
-                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                            .clickable(onClick = onEnterMiniWindow)
-                            .padding(horizontal = 9.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = "⧉",
-                            color = ActiveGreen,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                .clickable(onClick = onReload),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = if (isArabic) "إعادة تحميل" else "Reload",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.65f))
-                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                            .clickable(onClick = onCycleScaleMode)
-                            .padding(horizontal = 9.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (isArabic) scaleMode.labelAr else scaleMode.labelEn,
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                .clickable(onClick = onCycleScaleMode)
+                                .padding(horizontal = 9.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isArabic) scaleMode.labelAr else scaleMode.labelEn,
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                    Box(
-                        modifier = Modifier
-                            .size(30.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.65f))
-                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                            .clickable(onClick = onReload),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = if (isArabic) "إعادة تحميل" else "Reload",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                .clickable(onClick = onEnterMiniWindow)
+                                .padding(horizontal = 9.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "⧉",
+                                color = ActiveGreen,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.65f))
+                                .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
+                                .clickable(onClick = onToggleMute)
+                                .padding(horizontal = 9.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isMuted) "🔇" else "🔊",
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        visibleServerIndices.reversed().forEach { realIdx ->
+                            val displayNumber = visibleServerIndices.indexOf(realIdx) + 1
+                            val isSrvSelected = realIdx == selectedServerIndex
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSrvSelected) ActiveGreen else Color.Black.copy(alpha = 0.65f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (isSrvSelected) ActiveGreen else BorderGreen,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable { onSelectServer(realIdx) }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "$displayNumber",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+
+
 
 @Composable
 private fun BrandBadgeArt(
