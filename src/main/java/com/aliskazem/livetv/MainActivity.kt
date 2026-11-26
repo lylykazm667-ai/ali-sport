@@ -109,18 +109,18 @@ private val REGIONAL_API_FOOTBALL_KEYS = listOf(
     "8280cbf00eb190937d74e819db251d80",
     "34b4b3a4b2ca1509fbc1a4fc3915298"
 )
-private const val CURRENT_SEASON = 2026
+private val SEASONS_TO_TRY = listOf(2026, 2025)
 
 private const val REMOTE_CHANNELS_JSON_URL =
     "https://raw.githubusercontent.com/lylykazm667-ai/ali-sport/refs/heads/main/channels.json"
 private const val CHANNELS_CACHE_PREFS = "alikazem_channels_cache"
 private const val CHANNELS_CACHE_KEY = "channels_json_v1"
-private const val MATCHES_CACHE_KEY = "matches_feed_cache_v2"
-private const val STANDINGS_CACHE_PREFIX = "standings_cache_v6_"
-private const val SCORERS_CACHE_PREFIX = "scorers_cache_v4_"
-private const val ASSISTS_CACHE_PREFIX = "assists_cache_v3_"
-private const val MATCH_DETAILS_CACHE_PREFIX = "match_details_v1_"
-private const val TEAM_SEASON_CACHE_PREFIX = "team_season_v1_"
+private const val MATCHES_CACHE_KEY = "matches_feed_cache_v3"
+private const val STANDINGS_CACHE_PREFIX = "standings_cache_v7_"
+private const val SCORERS_CACHE_PREFIX = "scorers_cache_v5_"
+private const val ASSISTS_CACHE_PREFIX = "assists_cache_v4_"
+private const val MATCH_DETAILS_CACHE_PREFIX = "match_details_v2_"
+private const val TEAM_SEASON_CACHE_PREFIX = "team_season_v2_"
 
 enum class CategoryId {
     BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
@@ -176,6 +176,7 @@ data class CategoryItem(
 data class LiveMatchItem(
     val id: String,
     val fixtureId: Int? = null,
+    val fdMatchId: Int? = null,
     val homeTeamId: Int? = null,
     val awayTeamId: Int? = null,
     val utcIso: String,
@@ -215,6 +216,7 @@ data class StandingRowItem(
 
 data class ScorerRowItem(
     val rank: Int,
+    val playerId: Int? = null,
     val playerName: String,
     val rawPlayerName: String? = null,
     val teamName: String,
@@ -226,7 +228,7 @@ data class ScorerRowItem(
 
 data class MatchEventDetail(
     val minute: String,
-    val type: String, // "GOAL", "YELLOW_CARD", "RED_CARD"
+    val type: String,
     val isHome: Boolean,
     val playerName: String,
     val rawPlayerName: String,
@@ -236,6 +238,7 @@ data class MatchEventDetail(
 )
 
 data class LineupPlayerItem(
+    val playerId: Int? = null,
     val name: String,
     val rawName: String,
     val number: String?,
@@ -270,6 +273,36 @@ data class TeamSeasonFixtureItem(
     val statusTextAr: String,
     val statusTextEn: String,
     val scoreText: String?
+)
+
+data class PlayerProfileStats(
+    val playerId: Int?,
+    val nameAr: String,
+    val nameEn: String,
+    val photoUrl: String?,
+    val nationalityAr: String,
+    val nationalityEn: String,
+    val age: String?,
+    val positionAr: String,
+    val positionEn: String,
+    val teamNameAr: String,
+    val teamNameEn: String,
+    val teamLogoUrl: String?,
+    val leagueName: String,
+    val appearances: Int,
+    val minutes: Int,
+    val goals: Int,
+    val assists: Int,
+    val rating: String?,
+    val yellowCards: Int,
+    val redCards: Int
+)
+
+data class SelectedPlayerQuery(
+    val playerId: Int?,
+    val rawPlayerName: String,
+    val rawTeamName: String?,
+    val leagueCode: String?
 )
 
 data class LeagueOption(
@@ -423,6 +456,29 @@ private val SOCIAL_ACCOUNTS = listOf(
     )
 )
 
+private val COUNTRY_ARABIC_NAMES: Map<String, String> = mapOf(
+    "spain" to "إسبانيا",
+    "france" to "فرنسا",
+    "england" to "إنجلترا",
+    "portugal" to "البرتغال",
+    "brazil" to "البرازيل",
+    "argentina" to "الأرجنتين",
+    "germany" to "ألمانيا",
+    "italy" to "إيطاليا",
+    "netherlands" to "هولندا",
+    "belgium" to "بلجيكا",
+    "croatia" to "كرواتيا",
+    "morocco" to "المغرب",
+    "egypt" to "مصر",
+    "iraq" to "العراق",
+    "saudi arabia" to "السعودية",
+    "norway" to "النرويج",
+    "sweden" to "السويد",
+    "uruguay" to "الأوروغواي",
+    "colombia" to "كولومبيا",
+    "turkey" to "تركيا"
+)
+
 private val PLAYER_ARABIC_NAMES: Map<String, String> = mapOf(
     "lamine yamal" to "لامين يمال",
     "lamine yamal nasraoui ebana" to "لامين يمال",
@@ -449,7 +505,16 @@ private val PLAYER_ARABIC_NAMES: Map<String, String> = mapOf(
     "ثيرنو بارري" to "ثيرنو باري",
     "nicolas jackson" to "نيكولاس جاكسون",
     "jackson" to "نيكولاس جاكسون",
-    "نيكولاس جاككسون" to "نيكولاس جاكسون"
+    "نيكولاس جاككسون" to "نيكولاس جاكسون",
+    "kylian mbappe" to "كيليان مبابي",
+    "mbappe" to "كيليان مبابي",
+    "vinicius junior" to "فينيسيوس جونيور",
+    "vinicius jr" to "فينيسيوس جونيور",
+    "jude bellingham" to "جود بيلينغهام",
+    "mohamed salah" to "محمد صلاح",
+    "robert lewandowski" to "روبرت ليفاندوفسكي",
+    "pedri" to "بيدري",
+    "gavi" to "غافي"
 )
 
 private val TEAM_ARABIC_NAMES: Map<String, String> = mapOf(
@@ -792,6 +857,25 @@ private fun transliterateToArabic(raw: String): String {
     return sb.toString().replace(Regex("\\s+"), " ").trim()
 }
 
+private fun translateCountry(rawCountry: String, isArabic: Boolean): String {
+    val clean = rawCountry.trim()
+    if (clean.isBlank()) return if (isArabic) "غير محدد" else "Unknown"
+    if (!isArabic) return clean
+    return COUNTRY_ARABIC_NAMES[foldSpecialLatinChars(clean)] ?: clean
+}
+
+private fun translatePosition(rawPos: String?, isArabic: Boolean): String {
+    val p = rawPos?.trim()?.uppercase(Locale.ROOT).orEmpty()
+    if (p.isBlank()) return if (isArabic) "لاعب" else "Player"
+    return when {
+        p.startsWith("G") -> if (isArabic) "حارس مرمى" else "Goalkeeper"
+        p.startsWith("D") -> if (isArabic) "مدافع" else "Defender"
+        p.startsWith("M") -> if (isArabic) "لاعب وسط" else "Midfielder"
+        p.startsWith("F") || p.startsWith("A") -> if (isArabic) "مهاجم" else "Attacker"
+        else -> p
+    }
+}
+
 private fun parseStringMap(obj: JSONObject?): Map<String, String> {
     if (obj == null) return emptyMap()
     val map = mutableMapOf<String, String>()
@@ -1069,6 +1153,7 @@ private fun saveMatchesCache(context: Context, list: List<LiveMatchItem>) {
                 JSONObject().apply {
                     put("id", m.id)
                     put("fixtureId", m.fixtureId ?: JSONObject.NULL)
+                    put("fdMatchId", m.fdMatchId ?: JSONObject.NULL)
                     put("homeTeamId", m.homeTeamId ?: JSONObject.NULL)
                     put("awayTeamId", m.awayTeamId ?: JSONObject.NULL)
                     put("utcIso", m.utcIso)
@@ -1116,6 +1201,7 @@ private fun loadMatchesCache(context: Context): List<LiveMatchItem> {
                 LiveMatchItem(
                     id = obj.optString("id", "cached_$i"),
                     fixtureId = if (obj.isNull("fixtureId")) null else obj.optInt("fixtureId"),
+                    fdMatchId = if (obj.isNull("fdMatchId")) null else obj.optInt("fdMatchId"),
                     homeTeamId = if (obj.isNull("homeTeamId")) null else obj.optInt("homeTeamId"),
                     awayTeamId = if (obj.isNull("awayTeamId")) null else obj.optInt("awayTeamId"),
                     utcIso = obj.optString("utcIso", ""),
@@ -1219,6 +1305,7 @@ private fun saveScorersCache(context: Context, leagueCode: String, rows: List<Sc
             arr.put(
                 JSONObject().apply {
                     put("rank", r.rank)
+                    put("playerId", r.playerId ?: JSONObject.NULL)
                     put("playerName", r.playerName)
                     put("rawPlayerName", r.rawPlayerName ?: JSONObject.NULL)
                     put("teamName", r.teamName)
@@ -1245,6 +1332,7 @@ private fun loadScorersCache(context: Context, leagueCode: String): List<ScorerR
             out.add(
                 ScorerRowItem(
                     rank = obj.optInt("rank", i + 1),
+                    playerId = if (obj.isNull("playerId")) null else obj.optInt("playerId"),
                     playerName = obj.optString("playerName", ""),
                     rawPlayerName = obj.optString("rawPlayerName", "").takeIf { it.isNotBlank() && it != "null" },
                     teamName = obj.optString("teamName", ""),
@@ -1268,6 +1356,7 @@ private fun saveAssistsCache(context: Context, leagueCode: String, rows: List<Sc
             arr.put(
                 JSONObject().apply {
                     put("rank", r.rank)
+                    put("playerId", r.playerId ?: JSONObject.NULL)
                     put("playerName", r.playerName)
                     put("rawPlayerName", r.rawPlayerName ?: JSONObject.NULL)
                     put("teamName", r.teamName)
@@ -1294,6 +1383,7 @@ private fun loadAssistsCache(context: Context, leagueCode: String): List<ScorerR
             out.add(
                 ScorerRowItem(
                     rank = obj.optInt("rank", i + 1),
+                    playerId = if (obj.isNull("playerId")) null else obj.optInt("playerId"),
                     playerName = obj.optString("playerName", ""),
                     rawPlayerName = obj.optString("rawPlayerName", "").takeIf { it.isNotBlank() && it != "null" },
                     teamName = obj.optString("teamName", ""),
@@ -1353,7 +1443,7 @@ private object CrestMemoryCache {
 
     @Synchronized
     fun put(url: String, bitmap: Bitmap) {
-        if (cache.size > 300) {
+        if (cache.size > 350) {
             cache.clear()
         }
         cache[url] = bitmap
@@ -1363,6 +1453,7 @@ private object CrestMemoryCache {
 private object DetailsSessionCache {
     private val matchCache = mutableMapOf<String, Pair<Long, MatchFullDetails>>()
     private val teamScheduleCache = mutableMapOf<String, Pair<Long, List<TeamSeasonFixtureItem>>>()
+    private val playerProfileCache = mutableMapOf<String, Pair<Long, PlayerProfileStats>>()
 
     @Synchronized
     fun getMatch(key: String, maxAgeMs: Long): MatchFullDetails? {
@@ -1386,8 +1477,21 @@ private object DetailsSessionCache {
 
     @Synchronized
     fun putTeamSchedule(key: String, data: List<TeamSeasonFixtureItem>) {
-        if (teamScheduleCache.size > 120) teamScheduleCache.clear()
+        if (teamScheduleCache.size > 150) teamScheduleCache.clear()
         teamScheduleCache[key] = System.currentTimeMillis() to data
+    }
+
+    @Synchronized
+    fun getPlayer(key: String, maxAgeMs: Long): PlayerProfileStats? {
+        val entry = playerProfileCache[key] ?: return null
+        if (System.currentTimeMillis() - entry.first > maxAgeMs) return null
+        return entry.second
+    }
+
+    @Synchronized
+    fun putPlayer(key: String, data: PlayerProfileStats) {
+        if (playerProfileCache.size > 150) playerProfileCache.clear()
+        playerProfileCache[key] = System.currentTimeMillis() to data
     }
 }
 
@@ -1698,6 +1802,19 @@ private suspend fun httpGetWithRegionalApiFootballKeys(endpointPathWithQuery: St
     return null
 }
 
+private suspend fun fetchApiFootballAcrossSeasons(
+    baseEndpoint: String,
+    querySuffix: String = ""
+): String? {
+    for (season in SEASONS_TO_TRY) {
+        val sep = if (baseEndpoint.contains("?")) "&" else "?"
+        val fullQuery = "$baseEndpoint${sep}season=$season$querySuffix"
+        val body = httpGetWithRegionalApiFootballKeys(fullQuery)
+        if (!body.isNullOrBlank()) return body
+    }
+    return null
+}
+
 private fun parseFootballDataStatus(statusRaw: String): MatchFeedStatus {
     return when (statusRaw.uppercase(Locale.ROOT)) {
         "FINISHED", "AWARDED", "FT", "AET", "PEN" -> MatchFeedStatus.FINISHED
@@ -1716,8 +1833,9 @@ private suspend fun fetchRegionalMatchesForLeague(
     extraLeagues: List<ExtraLeagueConfig>
 ): List<LiveMatchItem> {
     return withContext(Dispatchers.IO) {
-        val body = httpGetWithRegionalApiFootballKeys(
-            "fixtures?league=$leagueId&season=$CURRENT_SEASON&from=$dateFrom&to=$dateTo&timezone=Asia/Baghdad"
+        val body = fetchApiFootballAcrossSeasons(
+            baseEndpoint = "fixtures?league=$leagueId",
+            querySuffix = "&from=$dateFrom&to=$dateTo&timezone=Asia/Baghdad"
         ) ?: return@withContext emptyList()
 
         val list = mutableListOf<LiveMatchItem>()
@@ -1766,8 +1884,9 @@ private suspend fun fetchRegionalMatchesForLeague(
 
             list.add(
                 LiveMatchItem(
-                    id = "${code}_${leagueId}_${CURRENT_SEASON}_${fxId ?: i}",
+                    id = "${code}_${leagueId}_${fxId ?: i}",
                     fixtureId = fxId,
+                    fdMatchId = null,
                     homeTeamId = homeId,
                     awayTeamId = awayId,
                     utcIso = dateStr,
@@ -1875,11 +1994,13 @@ private suspend fun fetchMatchesFiltered(
 
                 val status = parseFootballDataStatus(item.optString("status", "SCHEDULED"))
                 val minuteVal = item.opt("minute")?.takeIf { it != JSONObject.NULL }?.toString()?.takeIf { it.isNotBlank() }
+                val fdId = item.optInt("id", -1).takeIf { it > 0 }
 
                 list.add(
                     LiveMatchItem(
-                        id = item.optString("id", "fd_$i"),
+                        id = fdId?.toString() ?: "fd_$i",
                         fixtureId = null,
+                        fdMatchId = fdId,
                         homeTeamId = null,
                         awayTeamId = null,
                         utcIso = utcDateStr,
@@ -1945,7 +2066,7 @@ private suspend fun fetchStandingsForLeague(
 
     if (cleanCode == "EL") {
         return withContext(Dispatchers.IO) {
-            val body = httpGetWithRegionalApiFootballKeys("standings?league=3&season=$CURRENT_SEASON")
+            val body = fetchApiFootballAcrossSeasons("standings?league=3")
                 ?: return@withContext sortStandingsRows(customRows.orEmpty(), cleanCode)
             val root = JSONObject(body)
             val respArr = root.optJSONArray("response") ?: JSONArray()
@@ -2094,9 +2215,7 @@ private suspend fun fetchTopScorersForLeague(
         val regionalIds = REGIONAL_API_FOOTBALL_LEAGUE_IDS[leagueCode]
         if (regionalIds != null) {
             for (leagueId in regionalIds) {
-                val body = httpGetWithRegionalApiFootballKeys(
-                    "players/topscorers?league=$leagueId&season=$CURRENT_SEASON"
-                ) ?: continue
+                val body = fetchApiFootballAcrossSeasons("players/topscorers?league=$leagueId") ?: continue
                 val root = JSONObject(body)
                 val respArr = root.optJSONArray("response") ?: JSONArray()
                 val rows = mutableListOf<ScorerRowItem>()
@@ -2108,6 +2227,7 @@ private suspend fun fetchTopScorersForLeague(
                     val teamObj = firstStat?.optJSONObject("team")
                     val goalsObj = firstStat?.optJSONObject("goals")
 
+                    val pId = playerObj.optInt("id", -1).takeIf { it > 0 }
                     val rawPlayerName = playerObj.optString("name", "")
                         .ifBlank {
                             "${playerObj.optString("firstname", "")} ${playerObj.optString("lastname", "")}".trim()
@@ -2122,6 +2242,7 @@ private suspend fun fetchTopScorersForLeague(
                     rows.add(
                         ScorerRowItem(
                             rank = i + 1,
+                            playerId = pId,
                             playerName = translatePlayerName(rawPlayerName, playerOverrides, teamOverrides, isArabic = true),
                             rawPlayerName = rawPlayerName,
                             teamName = translateTeamName(rawTeamName, teamOverrides, isArabic = true),
@@ -2167,6 +2288,7 @@ private suspend fun fetchTopScorersForLeague(
             rows.add(
                 ScorerRowItem(
                     rank = i + 1,
+                    playerId = null,
                     playerName = translatePlayerName(rawPlayerName, playerOverrides, teamOverrides, isArabic = true),
                     rawPlayerName = rawPlayerName,
                     teamName = translateTeamName(rawTeamName, teamOverrides, isArabic = true),
@@ -2193,9 +2315,7 @@ private suspend fun fetchTopAssistersForLeague(
         val regionalIds = REGIONAL_API_FOOTBALL_LEAGUE_IDS[leagueCode]
         if (regionalIds != null) {
             for (leagueId in regionalIds) {
-                val body = httpGetWithRegionalApiFootballKeys(
-                    "players/topassists?league=$leagueId&season=$CURRENT_SEASON"
-                ) ?: continue
+                val body = fetchApiFootballAcrossSeasons("players/topassists?league=$leagueId") ?: continue
                 val root = JSONObject(body)
                 val respArr = root.optJSONArray("response") ?: JSONArray()
                 val rows = mutableListOf<ScorerRowItem>()
@@ -2207,6 +2327,7 @@ private suspend fun fetchTopAssistersForLeague(
                     val teamObj = firstStat?.optJSONObject("team")
                     val goalsObj = firstStat?.optJSONObject("goals")
 
+                    val pId = playerObj.optInt("id", -1).takeIf { it > 0 }
                     val rawPlayerName = playerObj.optString("name", "")
                         .ifBlank {
                             "${playerObj.optString("firstname", "")} ${playerObj.optString("lastname", "")}".trim()
@@ -2221,6 +2342,7 @@ private suspend fun fetchTopAssistersForLeague(
                     rows.add(
                         ScorerRowItem(
                             rank = i + 1,
+                            playerId = pId,
                             playerName = translatePlayerName(rawPlayerName, playerOverrides, teamOverrides, isArabic = true),
                             rawPlayerName = rawPlayerName,
                             teamName = translateTeamName(rawTeamName, teamOverrides, isArabic = true),
@@ -2249,37 +2371,150 @@ private suspend fun resolveApiFootballFixtureId(match: LiveMatchItem): Int? {
     match.fixtureId?.let { return it }
     val dateKey = match.baghdadDate.ifBlank { currentBaghdadTodayKey() }
     val leagueNum = match.leagueId ?: match.leagueCode?.let { FOOTBALL_DATA_COMPETITION_MAP[it.uppercase(Locale.ROOT)] }
-    val query = if (leagueNum != null) {
-        "fixtures?league=$leagueNum&season=$CURRENT_SEASON&date=$dateKey&timezone=Asia/Baghdad"
-    } else {
-        "fixtures?date=$dateKey&timezone=Asia/Baghdad"
+
+    val queries = mutableListOf<String>()
+    if (leagueNum != null) {
+        queries.add("fixtures?league=$leagueNum&date=$dateKey&timezone=Asia/Baghdad")
     }
-    val body = httpGetWithRegionalApiFootballKeys(query) ?: return null
-    val root = try {
-        JSONObject(body)
-    } catch (_: Exception) {
-        null
-    } ?: return null
-    val respArr = root.optJSONArray("response") ?: return null
+    queries.add("fixtures?date=$dateKey&timezone=Asia/Baghdad")
+
     val targetHome = normalizeTeamLookupKey(match.homeTeamRaw ?: match.homeTeam)
     val targetAway = normalizeTeamLookupKey(match.awayTeamRaw ?: match.awayTeam)
 
-    for (i in 0 until respArr.length()) {
-        val item = respArr.optJSONObject(i) ?: continue
-        val fxObj = item.optJSONObject("fixture") ?: continue
-        val teamsObj = item.optJSONObject("teams") ?: continue
-        val hName = normalizeTeamLookupKey(teamsObj.optJSONObject("home")?.optString("name", "") ?: "")
-        val aName = normalizeTeamLookupKey(teamsObj.optJSONObject("away")?.optString("name", "") ?: "")
-        if (
-            (hName == targetHome && aName == targetAway) ||
-            (hName.contains(targetHome) && aName.contains(targetAway)) ||
-            (targetHome.contains(hName) && targetAway.contains(aName))
-        ) {
-            val idVal = fxObj.optInt("id", -1)
-            if (idVal > 0) return idVal
+    for (q in queries) {
+        val body = fetchApiFootballAcrossSeasons(q) ?: continue
+        val root = try {
+            JSONObject(body)
+        } catch (_: Exception) {
+            null
+        } ?: continue
+        val respArr = root.optJSONArray("response") ?: continue
+        for (i in 0 until respArr.length()) {
+            val item = respArr.optJSONObject(i) ?: continue
+            val fxObj = item.optJSONObject("fixture") ?: continue
+            val teamsObj = item.optJSONObject("teams") ?: continue
+            val hName = normalizeTeamLookupKey(teamsObj.optJSONObject("home")?.optString("name", "") ?: "")
+            val aName = normalizeTeamLookupKey(teamsObj.optJSONObject("away")?.optString("name", "") ?: "")
+            val homeMatch = hName == targetHome || (hName.isNotBlank() && targetHome.isNotBlank() && (hName.contains(targetHome) || targetHome.contains(hName)))
+            val awayMatch = aName == targetAway || (aName.isNotBlank() && targetAway.isNotBlank() && (aName.contains(targetAway) || targetAway.contains(aName)))
+            if (homeMatch && awayMatch) {
+                val idVal = fxObj.optInt("id", -1)
+                if (idVal > 0) return idVal
+            }
         }
     }
     return null
+}
+
+private suspend fun fetchFootballDataMatchDetailsFallback(
+    match: LiveMatchItem,
+    playerOverrides: Map<String, String>,
+    teamOverrides: Map<String, String>
+): MatchFullDetails? {
+    val fdId = match.fdMatchId ?: return null
+    val body = httpGetJson(
+        "https://api.football-data.org/v4/matches/$fdId",
+        mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY)
+    ) ?: return null
+
+    return try {
+        val root = JSONObject(body)
+        val homeIdFd = root.optJSONObject("homeTeam")?.optInt("id", -1)
+        val events = mutableListOf<MatchEventDetail>()
+
+        val goalsArr = root.optJSONArray("goals") ?: JSONArray()
+        for (i in 0 until goalsArr.length()) {
+            val g = goalsArr.optJSONObject(i) ?: continue
+            val min = g.optInt("minute", 0)
+            val inj = g.optInt("injuryTime", 0)
+            val minLbl = if (inj > 0) "$min+$inj'" else "$min'"
+            val scorerRaw = g.optJSONObject("scorer")?.optString("name", "").orEmpty()
+            if (scorerRaw.isBlank()) continue
+            val assistRaw = g.optJSONObject("assist")?.optString("name", "")?.takeIf { it.isNotBlank() && it != "null" }
+            val tId = g.optJSONObject("team")?.optInt("id", -1)
+            val isHome = if (homeIdFd != null && homeIdFd > 0 && tId != null && tId > 0) tId == homeIdFd else i % 2 == 0
+            events.add(
+                MatchEventDetail(
+                    minute = minLbl,
+                    type = "GOAL",
+                    isHome = isHome,
+                    playerName = translatePlayerName(scorerRaw, playerOverrides, teamOverrides, isArabic = true),
+                    rawPlayerName = scorerRaw,
+                    assistName = assistRaw?.let { translatePlayerName(it, playerOverrides, teamOverrides, isArabic = true) },
+                    rawAssistName = assistRaw,
+                    detailText = g.optString("type", "")
+                )
+            )
+        }
+
+        val bookingsArr = root.optJSONArray("bookings") ?: JSONArray()
+        for (i in 0 until bookingsArr.length()) {
+            val b = bookingsArr.optJSONObject(i) ?: continue
+            val min = b.optInt("minute", 0)
+            val pRaw = b.optJSONObject("player")?.optString("name", "").orEmpty()
+            if (pRaw.isBlank()) continue
+            val cardTypeRaw = b.optString("card", "YELLOW_CARD")
+            val mapped = if (cardTypeRaw.contains("RED", ignoreCase = true)) "RED_CARD" else "YELLOW_CARD"
+            val tId = b.optJSONObject("team")?.optInt("id", -1)
+            val isHome = if (homeIdFd != null && homeIdFd > 0 && tId != null && tId > 0) tId == homeIdFd else i % 2 == 0
+            events.add(
+                MatchEventDetail(
+                    minute = "$min'",
+                    type = mapped,
+                    isHome = isHome,
+                    playerName = translatePlayerName(pRaw, playerOverrides, teamOverrides, isArabic = true),
+                    rawPlayerName = pRaw
+                )
+            )
+        }
+
+        fun buildFdLineup(teamKey: String, defaultRawName: String): TeamLineupBlock? {
+            val tObj = root.optJSONObject(teamKey) ?: return null
+            val tRaw = tObj.optString("name", defaultRawName)
+            val formation = tObj.optString("formation", "").takeIf { it.isNotBlank() && it != "null" }
+            val lineArr = tObj.optJSONArray("lineup") ?: JSONArray()
+            val benchArr = tObj.optJSONArray("bench") ?: JSONArray()
+
+            fun mapArr(arr: JSONArray): List<LineupPlayerItem> {
+                val out = mutableListOf<LineupPlayerItem>()
+                for (k in 0 until arr.length()) {
+                    val p = arr.optJSONObject(k) ?: continue
+                    val nameRaw = p.optString("name", "").trim()
+                    if (nameRaw.isBlank()) continue
+                    val num = p.opt("shirtNumber")?.takeIf { it != JSONObject.NULL }?.toString()
+                    val pos = p.optString("position", "").takeIf { it.isNotBlank() && it != "null" }
+                    out.add(
+                        LineupPlayerItem(
+                            playerId = null,
+                            name = translatePlayerName(nameRaw, playerOverrides, teamOverrides, isArabic = true),
+                            rawName = nameRaw,
+                            number = num,
+                            pos = pos,
+                            rating = null
+                        )
+                    )
+                }
+                return out
+            }
+
+            val startXI = mapArr(lineArr)
+            val subs = mapArr(benchArr)
+            if (startXI.isEmpty() && subs.isEmpty() && formation == null) return null
+            return TeamLineupBlock(
+                teamName = translateTeamName(tRaw, teamOverrides, isArabic = true),
+                formation = formation,
+                startingXI = startXI,
+                substitutes = subs
+            )
+        }
+
+        val hBlock = buildFdLineup("homeTeam", match.homeTeamRaw ?: match.homeTeam)
+        val aBlock = buildFdLineup("awayTeam", match.awayTeamRaw ?: match.awayTeam)
+        if (events.isEmpty() && hBlock == null && aBlock == null) null
+        else MatchFullDetails(events = events, homeLineup = hBlock, awayLineup = aBlock)
+    } catch (_: Exception) {
+        null
+    }
 }
 
 private suspend fun fetchMatchFullDetails(
@@ -2296,145 +2531,167 @@ private suspend fun fetchMatchFullDetails(
     }
 
     return withContext(Dispatchers.IO) {
-        val fxId = resolveApiFootballFixtureId(match) ?: return@withContext MatchFullDetails()
-        val eventsDeferred = async { httpGetWithRegionalApiFootballKeys("fixtures/events?fixture=$fxId") }
-        val lineupsDeferred = async { httpGetWithRegionalApiFootballKeys("fixtures/lineups?fixture=$fxId") }
-        val playersDeferred = async { httpGetWithRegionalApiFootballKeys("fixtures/players?fixture=$fxId") }
+        val fxId = resolveApiFootballFixtureId(match)
+        if (fxId != null) {
+            val eventsDeferred = async { httpGetWithRegionalApiFootballKeys("fixtures/events?fixture=$fxId") }
+            val lineupsDeferred = async { httpGetWithRegionalApiFootballKeys("fixtures/lineups?fixture=$fxId") }
+            val playersDeferred = async { httpGetWithRegionalApiFootballKeys("fixtures/players?fixture=$fxId") }
 
-        val eventsJson = eventsDeferred.await()
-        val lineupsJson = lineupsDeferred.await()
-        val playersJson = playersDeferred.await()
+            val eventsJson = eventsDeferred.await()
+            val lineupsJson = lineupsDeferred.await()
+            val playersJson = playersDeferred.await()
 
-        val ratingsByPlayerName = mutableMapOf<String, String>()
-        if (!playersJson.isNullOrBlank()) {
-            try {
-                val pRoot = JSONObject(playersJson)
-                val pResp = pRoot.optJSONArray("response") ?: JSONArray()
-                for (t in 0 until pResp.length()) {
-                    val tObj = pResp.optJSONObject(t) ?: continue
-                    val pList = tObj.optJSONArray("players") ?: JSONArray()
-                    for (p in 0 until pList.length()) {
-                        val pEntry = pList.optJSONObject(p) ?: continue
-                        val pName = pEntry.optJSONObject("player")?.optString("name", "")?.trim().orEmpty()
-                        val stat0 = pEntry.optJSONArray("statistics")?.optJSONObject(0)
-                        val ratingStr = stat0?.optString("rating", "")?.takeIf { it.isNotBlank() && it != "null" }
-                        if (pName.isNotBlank() && ratingStr != null) {
-                            ratingsByPlayerName[foldSpecialLatinChars(pName)] = ratingStr
+            val ratingsByPlayerName = mutableMapOf<String, String>()
+            val idsByPlayerName = mutableMapOf<String, Int>()
+            if (!playersJson.isNullOrBlank()) {
+                try {
+                    val pRoot = JSONObject(playersJson)
+                    val pResp = pRoot.optJSONArray("response") ?: JSONArray()
+                    for (t in 0 until pResp.length()) {
+                        val tObj = pResp.optJSONObject(t) ?: continue
+                        val pList = tObj.optJSONArray("players") ?: JSONArray()
+                        for (p in 0 until pList.length()) {
+                            val pEntry = pList.optJSONObject(p) ?: continue
+                            val pObj = pEntry.optJSONObject("player")
+                            val pName = pObj?.optString("name", "")?.trim().orEmpty()
+                            val pId = pObj?.optInt("id", -1)?.takeIf { it > 0 }
+                            val stat0 = pEntry.optJSONArray("statistics")?.optJSONObject(0)
+                            val ratingStr = stat0?.optString("rating", "")?.takeIf { it.isNotBlank() && it != "null" }
+                            if (pName.isNotBlank()) {
+                                val key = foldSpecialLatinChars(pName)
+                                if (ratingStr != null) ratingsByPlayerName[key] = ratingStr
+                                if (pId != null) idsByPlayerName[key] = pId
+                            }
                         }
                     }
+                } catch (_: Exception) {
                 }
-            } catch (_: Exception) {
             }
-        }
 
-        val parsedEvents = mutableListOf<MatchEventDetail>()
-        if (!eventsJson.isNullOrBlank()) {
-            try {
-                val eRoot = JSONObject(eventsJson)
-                val eResp = eRoot.optJSONArray("response") ?: JSONArray()
-                val homeId = match.homeTeamId
-                for (i in 0 until eResp.length()) {
-                    val ev = eResp.optJSONObject(i) ?: continue
-                    val typeRaw = ev.optString("type", "").trim()
-                    val detailRaw = ev.optString("detail", "").trim()
-                    val timeObj = ev.optJSONObject("time")
-                    val elapsed = timeObj?.optInt("elapsed", 0) ?: 0
-                    val extra = timeObj?.optInt("extra", 0) ?: 0
-                    val minFormatted = if (extra > 0) "$elapsed+$extra'" else "$elapsed'"
+            val parsedEvents = mutableListOf<MatchEventDetail>()
+            if (!eventsJson.isNullOrBlank()) {
+                try {
+                    val eRoot = JSONObject(eventsJson)
+                    val eResp = eRoot.optJSONArray("response") ?: JSONArray()
+                    val homeId = match.homeTeamId
+                    for (i in 0 until eResp.length()) {
+                        val ev = eResp.optJSONObject(i) ?: continue
+                        val typeRaw = ev.optString("type", "").trim()
+                        val detailRaw = ev.optString("detail", "").trim()
+                        val timeObj = ev.optJSONObject("time")
+                        val elapsed = timeObj?.optInt("elapsed", 0) ?: 0
+                        val extra = timeObj?.optInt("extra", 0) ?: 0
+                        val minFormatted = if (extra > 0) "$elapsed+$extra'" else "$elapsed'"
 
-                    val teamObj = ev.optJSONObject("team")
-                    val evTeamId = teamObj?.optInt("id", -1)
-                    val evTeamName = teamObj?.optString("name", "") ?: ""
-                    val isHome = when {
-                        homeId != null && evTeamId != null && evTeamId > 0 -> evTeamId == homeId
-                        !match.homeTeamRaw.isNullOrBlank() -> normalizeTeamLookupKey(evTeamName) == normalizeTeamLookupKey(match.homeTeamRaw)
-                        else -> i % 2 == 0
-                    }
+                        val teamObj = ev.optJSONObject("team")
+                        val evTeamId = teamObj?.optInt("id", -1)
+                        val evTeamName = teamObj?.optString("name", "") ?: ""
+                        val isHome = when {
+                            homeId != null && evTeamId != null && evTeamId > 0 -> evTeamId == homeId
+                            !match.homeTeamRaw.isNullOrBlank() -> normalizeTeamLookupKey(evTeamName) == normalizeTeamLookupKey(match.homeTeamRaw)
+                            else -> i % 2 == 0
+                        }
 
-                    val playerRaw = ev.optJSONObject("player")?.optString("name", "")?.trim().orEmpty()
-                    if (playerRaw.isBlank()) continue
-                    val assistRaw = ev.optJSONObject("assist")?.optString("name", "")?.trim()?.takeIf { it.isNotBlank() && it != "null" }
+                        val playerRaw = ev.optJSONObject("player")?.optString("name", "")?.trim().orEmpty()
+                        if (playerRaw.isBlank()) continue
+                        val assistRaw = ev.optJSONObject("assist")?.optString("name", "")?.trim()?.takeIf { it.isNotBlank() && it != "null" }
 
-                    val mappedType = when {
-                        typeRaw.equals("Goal", ignoreCase = true) -> "GOAL"
-                        typeRaw.equals("Card", ignoreCase = true) && detailRaw.contains("Red", ignoreCase = true) -> "RED_CARD"
-                        typeRaw.equals("Card", ignoreCase = true) -> "YELLOW_CARD"
-                        else -> null
-                    } ?: continue
+                        val mappedType = when {
+                            typeRaw.equals("Goal", ignoreCase = true) -> "GOAL"
+                            typeRaw.equals("Card", ignoreCase = true) && detailRaw.contains("Red", ignoreCase = true) -> "RED_CARD"
+                            typeRaw.equals("Card", ignoreCase = true) -> "YELLOW_CARD"
+                            else -> null
+                        } ?: continue
 
-                    parsedEvents.add(
-                        MatchEventDetail(
-                            minute = minFormatted,
-                            type = mappedType,
-                            isHome = isHome,
-                            playerName = translatePlayerName(playerRaw, playerOverrides, teamOverrides, isArabic = true),
-                            rawPlayerName = playerRaw,
-                            assistName = assistRaw?.let { translatePlayerName(it, playerOverrides, teamOverrides, isArabic = true) },
-                            rawAssistName = assistRaw,
-                            detailText = detailRaw
-                        )
-                    )
-                }
-            } catch (_: Exception) {
-            }
-        }
-
-        var homeLineupBlock: TeamLineupBlock? = null
-        var awayLineupBlock: TeamLineupBlock? = null
-        if (!lineupsJson.isNullOrBlank()) {
-            try {
-                val lRoot = JSONObject(lineupsJson)
-                val lResp = lRoot.optJSONArray("response") ?: JSONArray()
-                for (idx in 0 until minOf(lResp.length(), 2)) {
-                    val lObj = lResp.optJSONObject(idx) ?: continue
-                    val tNameRaw = lObj.optJSONObject("team")?.optString("name", "") ?: ""
-                    val formation = lObj.optString("formation", "").takeIf { it.isNotBlank() && it != "null" }
-
-                    fun parseLineupList(arr: JSONArray?): List<LineupPlayerItem> {
-                        if (arr == null) return emptyList()
-                        val list = mutableListOf<LineupPlayerItem>()
-                        for (k in 0 until arr.length()) {
-                            val pl = arr.optJSONObject(k)?.optJSONObject("player") ?: continue
-                            val pRaw = pl.optString("name", "").trim()
-                            if (pRaw.isBlank()) continue
-                            val numStr = pl.optInt("number", -1).takeIf { it > 0 }?.toString()
-                            val posStr = pl.optString("pos", "").takeIf { it.isNotBlank() && it != "null" }
-                            val rt = ratingsByPlayerName[foldSpecialLatinChars(pRaw)]
-                            list.add(
-                                LineupPlayerItem(
-                                    name = translatePlayerName(pRaw, playerOverrides, teamOverrides, isArabic = true),
-                                    rawName = pRaw,
-                                    number = numStr,
-                                    pos = posStr,
-                                    rating = rt
-                                )
+                        parsedEvents.add(
+                            MatchEventDetail(
+                                minute = minFormatted,
+                                type = mappedType,
+                                isHome = isHome,
+                                playerName = translatePlayerName(playerRaw, playerOverrides, teamOverrides, isArabic = true),
+                                rawPlayerName = playerRaw,
+                                assistName = assistRaw?.let { translatePlayerName(it, playerOverrides, teamOverrides, isArabic = true) },
+                                rawAssistName = assistRaw,
+                                detailText = detailRaw
                             )
-                        }
-                        return list
+                        )
                     }
-
-                    val block = TeamLineupBlock(
-                        teamName = translateTeamName(tNameRaw, teamOverrides, isArabic = true),
-                        formation = formation,
-                        startingXI = parseLineupList(lObj.optJSONArray("startXI")),
-                        substitutes = parseLineupList(lObj.optJSONArray("substitutes"))
-                    )
-                    if (idx == 0) homeLineupBlock = block else awayLineupBlock = block
+                } catch (_: Exception) {
                 }
-            } catch (_: Exception) {
+            }
+
+            var homeLineupBlock: TeamLineupBlock? = null
+            var awayLineupBlock: TeamLineupBlock? = null
+            if (!lineupsJson.isNullOrBlank()) {
+                try {
+                    val lRoot = JSONObject(lineupsJson)
+                    val lResp = lRoot.optJSONArray("response") ?: JSONArray()
+                    for (idx in 0 until minOf(lResp.length(), 2)) {
+                        val lObj = lResp.optJSONObject(idx) ?: continue
+                        val tNameRaw = lObj.optJSONObject("team")?.optString("name", "") ?: ""
+                        val formation = lObj.optString("formation", "").takeIf { it.isNotBlank() && it != "null" }
+
+                        fun parseLineupList(arr: JSONArray?): List<LineupPlayerItem> {
+                            if (arr == null) return emptyList()
+                            val list = mutableListOf<LineupPlayerItem>()
+                            for (k in 0 until arr.length()) {
+                                val pl = arr.optJSONObject(k)?.optJSONObject("player") ?: continue
+                                val pRaw = pl.optString("name", "").trim()
+                                if (pRaw.isBlank()) continue
+                                val pId = pl.optInt("id", -1).takeIf { it > 0 } ?: idsByPlayerName[foldSpecialLatinChars(pRaw)]
+                                val numStr = pl.optInt("number", -1).takeIf { it > 0 }?.toString()
+                                val posStr = pl.optString("pos", "").takeIf { it.isNotBlank() && it != "null" }
+                                val rt = ratingsByPlayerName[foldSpecialLatinChars(pRaw)]
+                                list.add(
+                                    LineupPlayerItem(
+                                        playerId = pId,
+                                        name = translatePlayerName(pRaw, playerOverrides, teamOverrides, isArabic = true),
+                                        rawName = pRaw,
+                                        number = numStr,
+                                        pos = posStr,
+                                        rating = rt
+                                    )
+                                )
+                            }
+                            return list
+                        }
+
+                        val block = TeamLineupBlock(
+                            teamName = translateTeamName(tNameRaw, teamOverrides, isArabic = true),
+                            formation = formation,
+                            startingXI = parseLineupList(lObj.optJSONArray("startXI")),
+                            substitutes = parseLineupList(lObj.optJSONArray("substitutes"))
+                        )
+                        if (idx == 0) homeLineupBlock = block else awayLineupBlock = block
+                    }
+                } catch (_: Exception) {
+                }
+            }
+
+            if (parsedEvents.isNotEmpty() || homeLineupBlock != null || awayLineupBlock != null) {
+                val full = MatchFullDetails(
+                    events = parsedEvents,
+                    homeLineup = homeLineupBlock,
+                    awayLineup = awayLineupBlock
+                )
+                DetailsSessionCache.putMatch(cacheKey, full)
+                AppContextHolder.appContext?.let { ctx ->
+                    saveCachedString(ctx, cacheKey, serializeMatchDetails(full))
+                }
+                return@withContext full
             }
         }
 
-        val full = MatchFullDetails(
-            events = parsedEvents,
-            homeLineup = homeLineupBlock,
-            awayLineup = awayLineupBlock
-        )
-        DetailsSessionCache.putMatch(cacheKey, full)
-        AppContextHolder.appContext?.let { ctx ->
-            saveCachedString(ctx, cacheKey, serializeMatchDetails(full))
+        val fdFallback = fetchFootballDataMatchDetailsFallback(match, playerOverrides, teamOverrides)
+        if (fdFallback != null) {
+            DetailsSessionCache.putMatch(cacheKey, fdFallback)
+            AppContextHolder.appContext?.let { ctx ->
+                saveCachedString(ctx, cacheKey, serializeMatchDetails(fdFallback))
+            }
+            return@withContext fdFallback
         }
-        full
+
+        MatchFullDetails()
     }
 }
 
@@ -2457,6 +2714,7 @@ private fun serializeMatchDetails(d: MatchFullDetails): String {
             fun serPlayers(list: List<LineupPlayerItem>) = JSONArray().apply {
                 list.forEach { p ->
                     put(JSONObject().apply {
+                        put("playerId", p.playerId ?: JSONObject.NULL)
                         put("rawName", p.rawName)
                         put("number", p.number ?: JSONObject.NULL)
                         put("pos", p.pos ?: JSONObject.NULL)
@@ -2514,6 +2772,7 @@ private fun parseMatchDetailsJson(
                     if (rName.isBlank()) continue
                     out.add(
                         LineupPlayerItem(
+                            playerId = if (p.isNull("playerId")) null else p.optInt("playerId"),
                             name = translatePlayerName(rName, playerOverrides, teamOverrides, isArabic = true),
                             rawName = rName,
                             number = p.optString("number", "").takeIf { it.isNotBlank() && it != "null" },
@@ -2553,14 +2812,14 @@ private suspend fun resolveApiFootballTeamId(
         REGIONAL_API_FOOTBALL_LEAGUE_IDS[it]?.firstOrNull() ?: FOOTBALL_DATA_COMPETITION_MAP[it]
     }
     if (leagueNum != null) {
-        val tBody = httpGetWithRegionalApiFootballKeys("teams?league=$leagueNum&season=$CURRENT_SEASON")
+        val tBody = fetchApiFootballAcrossSeasons("teams?league=$leagueNum")
         if (!tBody.isNullOrBlank()) {
             try {
                 val arr = JSONObject(tBody).optJSONArray("response") ?: JSONArray()
                 for (i in 0 until arr.length()) {
                     val tObj = arr.optJSONObject(i)?.optJSONObject("team") ?: continue
                     val cand = normalizeTeamLookupKey(tObj.optString("name", ""))
-                    if (cand == targetNorm || cand.contains(targetNorm) || targetNorm.contains(cand)) {
+                    if (cand == targetNorm || (cand.isNotBlank() && targetNorm.isNotBlank() && (cand.contains(targetNorm) || targetNorm.contains(cand)))) {
                         val idVal = tObj.optInt("id", -1)
                         if (idVal > 0) return idVal
                     }
@@ -2572,8 +2831,15 @@ private suspend fun resolveApiFootballTeamId(
     val searchBody = httpGetWithRegionalApiFootballKeys("teams?search=${Uri.encode(rawTeamName)}") ?: return null
     return try {
         val arr = JSONObject(searchBody).optJSONArray("response") ?: JSONArray()
-        val first = arr.optJSONObject(0)?.optJSONObject("team")
-        first?.optInt("id", -1)?.takeIf { it > 0 }
+        for (i in 0 until arr.length()) {
+            val tObj = arr.optJSONObject(i)?.optJSONObject("team") ?: continue
+            val cand = normalizeTeamLookupKey(tObj.optString("name", ""))
+            if (cand == targetNorm || cand.contains(targetNorm) || targetNorm.contains(cand)) {
+                val idVal = tObj.optInt("id", -1)
+                if (idVal > 0) return idVal
+            }
+        }
+        arr.optJSONObject(0)?.optJSONObject("team")?.optInt("id", -1)?.takeIf { it > 0 }
     } catch (_: Exception) {
         null
     }
@@ -2592,103 +2858,312 @@ private suspend fun fetchTeamSeasonFixtures(
     DetailsSessionCache.getTeamSchedule(cacheKey, maxAgeMs = 300_000L)?.let { return it }
 
     return withContext(Dispatchers.IO) {
-        val teamId = resolveApiFootballTeamId(cleanRaw, leagueCode, knownTeamId) ?: return@withContext emptyList()
-        val body = httpGetWithRegionalApiFootballKeys(
-            "fixtures?team=$teamId&season=$CURRENT_SEASON&timezone=Asia/Baghdad"
-        ) ?: return@withContext emptyList()
-
-        val root = JSONObject(body)
-        val respArr = root.optJSONArray("response") ?: JSONArray()
-        val baghdadZone = ZoneId.of("Asia/Baghdad")
-        val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
-        val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
-
-        val dayArMap = mapOf(
-            1 to "الإثنين", 2 to "الثلاثاء", 3 to "الأربعاء",
-            4 to "الخميس", 5 to "الجمعة", 6 to "السبت", 7 to "الأحد"
-        )
-        val dayEnMap = mapOf(
-            1 to "Mon", 2 to "Tue", 3 to "Wed",
-            4 to "Thu", 5 to "Fri", 6 to "Sat", 7 to "Sun"
-        )
-
-        val out = mutableListOf<TeamSeasonFixtureItem>()
-        for (i in 0 until respArr.length()) {
-            val item = respArr.optJSONObject(i) ?: continue
-            val fx = item.optJSONObject("fixture") ?: continue
-            val teams = item.optJSONObject("teams") ?: continue
-            val goals = item.optJSONObject("goals")
-            val leagueObj = item.optJSONObject("league")
-            val statusObj = fx.optJSONObject("status")
-
-            val dateStr = fx.optString("date", "")
-            if (dateStr.isBlank()) continue
-            val instant = try {
-                Instant.parse(dateStr)
-            } catch (_: Exception) {
-                continue
-            }
-            val zdt = instant.atZone(baghdadZone)
-            val bDate = zdt.toLocalDate().format(dateFmt)
-            val bTime = zdt.toLocalTime().format(timeFmt)
-            val dayAr = dayArMap[zdt.dayOfWeek.value] ?: ""
-            val dayEn = dayEnMap[zdt.dayOfWeek.value] ?: ""
-
-            val homeObj = teams.optJSONObject("home")
-            val awayObj = teams.optJSONObject("away")
-            val hId = homeObj?.optInt("id", -1)
-            val isHome = hId == teamId
-
-            val oppObj = if (isHome) awayObj else homeObj
-            val oppRaw = oppObj?.optString("name", "Opponent") ?: "Opponent"
-            val oppCrest = oppObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
-
-            val lNameRaw = leagueObj?.optString("name", "") ?: ""
-            val lId = leagueObj?.optInt("id", -1)
-            val lCode = REGIONAL_API_FOOTBALL_LEAGUE_IDS.entries.firstOrNull { lId in it.value }?.key
-                ?: FOOTBALL_DATA_COMPETITION_MAP.entries.firstOrNull { it.value == lId }?.key
-
-            val shortSt = statusObj?.optString("short", "NS") ?: "NS"
-            val stEnum = parseFootballDataStatus(shortSt)
-            val hScore = goals?.opt("home")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
-            val aScore = goals?.opt("away")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
-
-            val scoreTxt = if (stEnum != MatchFeedStatus.SCHEDULED && hScore != null && aScore != null) {
-                "$hScore - $aScore"
-            } else {
-                null
-            }
-
-            val (stAr, stEn) = when (stEnum) {
-                MatchFeedStatus.FINISHED -> "انتهت" to "FT"
-                MatchFeedStatus.HALFTIME -> "استراحة" to "HT"
-                MatchFeedStatus.LIVE -> {
-                    val el = statusObj?.opt("elapsed")?.takeIf { it != JSONObject.NULL }?.toString()
-                    if (!el.isNullOrBlank()) "$el'" to "$el'" else "مباشر" to "LIVE"
-                }
-                MatchFeedStatus.SCHEDULED -> bTime to bTime
-            }
-
-            out.add(
-                TeamSeasonFixtureItem(
-                    id = fx.optInt("id", i).toString(),
-                    dateBaghdad = bDate,
-                    dayNameAr = dayAr,
-                    dayNameEn = dayEn,
-                    timeBaghdad = bTime,
-                    opponentName = translateTeamName(oppRaw, teamOverrides, isArabic = true),
-                    rawOpponentName = oppRaw,
-                    opponentCrestUrl = oppCrest,
-                    isHome = isHome,
-                    competitionName = translateCompetitionName(lNameRaw, lCode, extraLeagues, isArabic = true),
-                    statusTextAr = stAr,
-                    statusTextEn = stEn,
-                    scoreText = scoreTxt
-                )
-            )
+        val teamId = resolveApiFootballTeamId(cleanRaw, leagueCode, knownTeamId)
+        val body = if (teamId != null) {
+            fetchApiFootballAcrossSeasons("fixtures?team=$teamId", "&timezone=Asia/Baghdad")
+        } else {
+            null
         }
-        DetailsSessionCache.putTeamSchedule(cacheKey, out)
-        out
+
+        if (!body.isNullOrBlank()) {
+            val root = JSONObject(body)
+            val respArr = root.optJSONArray("response") ?: JSONArray()
+            val baghdadZone = ZoneId.of("Asia/Baghdad")
+            val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
+            val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
+
+            val dayArMap = mapOf(
+                1 to "الإثنين", 2 to "الثلاثاء", 3 to "الأربعاء",
+                4 to "الخميس", 5 to "الجمعة", 6 to "السبت", 7 to "الأحد"
+            )
+            val dayEnMap = mapOf(
+                1 to "Mon", 2 to "Tue", 3 to "Wed",
+                4 to "Thu", 5 to "Fri", 6 to "Sat", 7 to "Sun"
+            )
+
+            val out = mutableListOf<TeamSeasonFixtureItem>()
+            for (i in 0 until respArr.length()) {
+                val item = respArr.optJSONObject(i) ?: continue
+                val fx = item.optJSONObject("fixture") ?: continue
+                val teams = item.optJSONObject("teams") ?: continue
+                val goals = item.optJSONObject("goals")
+                val leagueObj = item.optJSONObject("league")
+                val statusObj = fx.optJSONObject("status")
+
+                val dateStr = fx.optString("date", "")
+                if (dateStr.isBlank()) continue
+                val instant = try {
+                    Instant.parse(dateStr)
+                } catch (_: Exception) {
+                    continue
+                }
+                val zdt = instant.atZone(baghdadZone)
+                val bDate = zdt.toLocalDate().format(dateFmt)
+                val bTime = zdt.toLocalTime().format(timeFmt)
+                val dayAr = dayArMap[zdt.dayOfWeek.value] ?: ""
+                val dayEn = dayEnMap[zdt.dayOfWeek.value] ?: ""
+
+                val homeObj = teams.optJSONObject("home")
+                val awayObj = teams.optJSONObject("away")
+                val hId = homeObj?.optInt("id", -1)
+                val isHome = hId == teamId
+
+                val oppObj = if (isHome) awayObj else homeObj
+                val oppRaw = oppObj?.optString("name", "Opponent") ?: "Opponent"
+                val oppCrest = oppObj?.optString("logo")?.takeIf { it.isNotBlank() && it != "null" }
+
+                val lNameRaw = leagueObj?.optString("name", "") ?: ""
+                val lId = leagueObj?.optInt("id", -1)
+                val lCode = REGIONAL_API_FOOTBALL_LEAGUE_IDS.entries.firstOrNull { lId in it.value }?.key
+                    ?: FOOTBALL_DATA_COMPETITION_MAP.entries.firstOrNull { it.value == lId }?.key
+
+                val shortSt = statusObj?.optString("short", "NS") ?: "NS"
+                val stEnum = parseFootballDataStatus(shortSt)
+                val hScore = goals?.opt("home")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+                val aScore = goals?.opt("away")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+
+                val scoreTxt = if (stEnum != MatchFeedStatus.SCHEDULED && hScore != null && aScore != null) {
+                    "$hScore - $aScore"
+                } else {
+                    null
+                }
+
+                val (stAr, stEn) = when (stEnum) {
+                    MatchFeedStatus.FINISHED -> "انتهت" to "FT"
+                    MatchFeedStatus.HALFTIME -> "استراحة" to "HT"
+                    MatchFeedStatus.LIVE -> {
+                        val el = statusObj?.opt("elapsed")?.takeIf { it != JSONObject.NULL }?.toString()
+                        if (!el.isNullOrBlank()) "$el'" to "$el'" else "مباشر" to "LIVE"
+                    }
+                    MatchFeedStatus.SCHEDULED -> bTime to bTime
+                }
+
+                out.add(
+                    TeamSeasonFixtureItem(
+                        id = fx.optInt("id", i).toString(),
+                        dateBaghdad = bDate,
+                        dayNameAr = dayAr,
+                        dayNameEn = dayEn,
+                        timeBaghdad = bTime,
+                        opponentName = translateTeamName(oppRaw, teamOverrides, isArabic = true),
+                        rawOpponentName = oppRaw,
+                        opponentCrestUrl = oppCrest,
+                        isHome = isHome,
+                        competitionName = translateCompetitionName(lNameRaw, lCode, extraLeagues, isArabic = true),
+                        statusTextAr = stAr,
+                        statusTextEn = stEn,
+                        scoreText = scoreTxt
+                    )
+                )
+            }
+            if (out.isNotEmpty()) {
+                val sorted = out.distinctBy { "${it.dateBaghdad}_${it.rawOpponentName}" }.sortedBy { it.dateBaghdad }
+                DetailsSessionCache.putTeamSchedule(cacheKey, sorted)
+                return@withContext sorted
+            }
+        }
+
+        // بديل عبر football-data.org إذا لم يرد API-Football
+        val compCode = leagueCode?.uppercase(Locale.ROOT)
+        if (!compCode.isNullOrBlank() && FOOTBALL_DATA_COMPETITION_MAP.containsKey(compCode)) {
+            val tListBody = httpGetJson(
+                "https://api.football-data.org/v4/competitions/$compCode/teams",
+                mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY)
+            )
+            if (!tListBody.isNullOrBlank()) {
+                val targetNorm = normalizeTeamLookupKey(cleanRaw)
+                val teamsArr = JSONObject(tListBody).optJSONArray("teams") ?: JSONArray()
+                var fdTeamId: Int? = null
+                for (i in 0 until teamsArr.length()) {
+                    val tObj = teamsArr.optJSONObject(i) ?: continue
+                    val cand = normalizeTeamLookupKey(tObj.optString("name", ""))
+                    if (cand == targetNorm || cand.contains(targetNorm) || targetNorm.contains(cand)) {
+                        fdTeamId = tObj.optInt("id", -1).takeIf { it > 0 }
+                        if (fdTeamId != null) break
+                    }
+                }
+                if (fdTeamId != null) {
+                    val mBody = httpGetJson(
+                        "https://api.football-data.org/v4/teams/$fdTeamId/matches",
+                        mapOf("X-Auth-Token" to FOOTBALL_DATA_API_KEY)
+                    )
+                    if (!mBody.isNullOrBlank()) {
+                        val mArr = JSONObject(mBody).optJSONArray("matches") ?: JSONArray()
+                        val baghdadZone = ZoneId.of("Asia/Baghdad")
+                        val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
+                        val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
+                        val dayArMap = mapOf(
+                            1 to "الإثنين", 2 to "الثلاثاء", 3 to "الأربعاء",
+                            4 to "الخميس", 5 to "الجمعة", 6 to "السبت", 7 to "الأحد"
+                        )
+                        val dayEnMap = mapOf(
+                            1 to "Mon", 2 to "Tue", 3 to "Wed",
+                            4 to "Thu", 5 to "Fri", 6 to "Sat", 7 to "Sun"
+                        )
+                        val fdOut = mutableListOf<TeamSeasonFixtureItem>()
+                        for (i in 0 until mArr.length()) {
+                            val mObj = mArr.optJSONObject(i) ?: continue
+                            val utcStr = mObj.optString("utcDate", "")
+                            if (utcStr.isBlank()) continue
+                            val instant = try { Instant.parse(utcStr) } catch (_: Exception) { continue }
+                            val zdt = instant.atZone(baghdadZone)
+                            val bDate = zdt.toLocalDate().format(dateFmt)
+                            val bTime = zdt.toLocalTime().format(timeFmt)
+                            val hObj = mObj.optJSONObject("homeTeam")
+                            val aObj = mObj.optJSONObject("awayTeam")
+                            val isHome = hObj?.optInt("id", -1) == fdTeamId
+                            val oppObj = if (isHome) aObj else hObj
+                            val oppRaw = oppObj?.optString("name", "Opponent") ?: "Opponent"
+                            val oppCrest = oppObj?.optString("crest")?.takeIf { it.isNotBlank() && !it.endsWith(".svg", true) }
+                            val stEnum = parseFootballDataStatus(mObj.optString("status", "SCHEDULED"))
+                            val ft = mObj.optJSONObject("score")?.optJSONObject("fullTime")
+                            val hSc = ft?.opt("home")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+                            val aSc = ft?.opt("away")?.takeIf { it != JSONObject.NULL }?.toString()?.toIntOrNull()
+                            val scTxt = if (stEnum != MatchFeedStatus.SCHEDULED && hSc != null && aSc != null) "$hSc - $aSc" else null
+                            val (stAr, stEn) = when (stEnum) {
+                                MatchFeedStatus.FINISHED -> "انتهت" to "FT"
+                                MatchFeedStatus.HALFTIME -> "استراحة" to "HT"
+                                MatchFeedStatus.LIVE -> "مباشر" to "LIVE"
+                                MatchFeedStatus.SCHEDULED -> bTime to bTime
+                            }
+                            fdOut.add(
+                                TeamSeasonFixtureItem(
+                                    id = mObj.optInt("id", i).toString(),
+                                    dateBaghdad = bDate,
+                                    dayNameAr = dayArMap[zdt.dayOfWeek.value] ?: "",
+                                    dayNameEn = dayEnMap[zdt.dayOfWeek.value] ?: "",
+                                    timeBaghdad = bTime,
+                                    opponentName = translateTeamName(oppRaw, teamOverrides, isArabic = true),
+                                    rawOpponentName = oppRaw,
+                                    opponentCrestUrl = oppCrest,
+                                    isHome = isHome,
+                                    competitionName = translateCompetitionName(mObj.optJSONObject("competition")?.optString("name", "") ?: "", compCode, extraLeagues, isArabic = true),
+                                    statusTextAr = stAr,
+                                    statusTextEn = stEn,
+                                    scoreText = scTxt
+                                )
+                            )
+                        }
+                        if (fdOut.isNotEmpty()) {
+                            DetailsSessionCache.putTeamSchedule(cacheKey, fdOut)
+                            return@withContext fdOut
+                        }
+                    }
+                }
+            }
+        }
+
+        emptyList()
+    }
+}
+
+private suspend fun fetchPlayerProfileAndStats(
+    query: SelectedPlayerQuery,
+    playerOverrides: Map<String, String>,
+    teamOverrides: Map<String, String>
+): PlayerProfileStats? {
+    val cacheKey = "player_stats_${query.playerId ?: normalizeTeamLookupKey(query.rawPlayerName)}_${query.leagueCode.orEmpty()}"
+    DetailsSessionCache.getPlayer(cacheKey, maxAgeMs = 300_000L)?.let { return it }
+
+    return withContext(Dispatchers.IO) {
+        val endpoint = if (query.playerId != null && query.playerId > 0) {
+            "players?id=${query.playerId}"
+        } else {
+            "players?search=${Uri.encode(query.rawPlayerName)}"
+        }
+
+        val body = fetchApiFootballAcrossSeasons(endpoint) ?: return@withContext null
+        val respArr = JSONObject(body).optJSONArray("response") ?: return@withContext null
+        if (respArr.length() == 0) return@withContext null
+
+        var chosenEntry = respArr.optJSONObject(0)
+        if (query.playerId == null && !query.rawTeamName.isNullOrBlank()) {
+            val targetTeamNorm = normalizeTeamLookupKey(query.rawTeamName)
+            for (i in 0 until respArr.length()) {
+                val cand = respArr.optJSONObject(i) ?: continue
+                val st0 = cand.optJSONArray("statistics")?.optJSONObject(0)
+                val tCand = normalizeTeamLookupKey(st0?.optJSONObject("team")?.optString("name", "") ?: "")
+                if (tCand.isNotBlank() && (tCand == targetTeamNorm || tCand.contains(targetTeamNorm) || targetTeamNorm.contains(tCand))) {
+                    chosenEntry = cand
+                    break
+                }
+            }
+        }
+
+        val entry = chosenEntry ?: return@withContext null
+        val pObj = entry.optJSONObject("player") ?: return@withContext null
+        val statsArr = entry.optJSONArray("statistics") ?: JSONArray()
+
+        var chosenStat = statsArr.optJSONObject(0)
+        val targetLeagueId = query.leagueCode?.uppercase(Locale.ROOT)?.let {
+            REGIONAL_API_FOOTBALL_LEAGUE_IDS[it]?.firstOrNull() ?: FOOTBALL_DATA_COMPETITION_MAP[it]
+        }
+        if (targetLeagueId != null) {
+            for (i in 0 until statsArr.length()) {
+                val st = statsArr.optJSONObject(i) ?: continue
+                if (st.optJSONObject("league")?.optInt("id", -1) == targetLeagueId) {
+                    chosenStat = st
+                    break
+                }
+            }
+        }
+
+        val rawName = pObj.optString("name", query.rawPlayerName)
+            .ifBlank { "${pObj.optString("firstname", "")} ${pObj.optString("lastname", "")}".trim() }
+            .ifBlank { query.rawPlayerName }
+
+        val photoUrl = pObj.optString("photo", "").takeIf { it.isNotBlank() && it != "null" }
+        val nationalityRaw = pObj.optString("nationality", "")
+        val ageVal = pObj.opt("age")?.takeIf { it != JSONObject.NULL }?.toString()
+        val posRaw = chosenStat?.optJSONObject("games")?.optString("position", "")
+            ?.takeIf { it.isNotBlank() && it != "null" }
+            ?: pObj.optString("position", "")
+
+        val teamObj = chosenStat?.optJSONObject("team")
+        val rawTeam = teamObj?.optString("name", query.rawTeamName.orEmpty()).orEmpty()
+        val teamLogo = teamObj?.optString("logo", "")?.takeIf { it.isNotBlank() && it != "null" }
+        val leagueObj = chosenStat?.optJSONObject("league")
+        val leagueName = leagueObj?.optString("name", "")?.takeIf { it.isNotBlank() }
+            ?: translateCompetitionName("", query.leagueCode, emptyList(), isArabic = true)
+
+        val gamesObj = chosenStat?.optJSONObject("games")
+        val goalsObj = chosenStat?.optJSONObject("goals")
+        val cardsObj = chosenStat?.optJSONObject("cards")
+
+        val apps = gamesObj?.optInt("appearences", 0) ?: 0
+        val mins = gamesObj?.optInt("minutes", 0) ?: 0
+        val ratingStr = gamesObj?.optString("rating", "")?.takeIf { it.isNotBlank() && it != "null" }
+            ?.toDoubleOrNull()?.let { String.format(Locale.ROOT, "%.1f", it) }
+        val goalsCnt = goalsObj?.optInt("total", 0) ?: 0
+        val assistsCnt = goalsObj?.optInt("assists", 0) ?: 0
+        val yellowCnt = cardsObj?.optInt("yellow", 0) ?: 0
+        val redCnt = cardsObj?.optInt("red", 0) ?: 0
+
+        val profile = PlayerProfileStats(
+            playerId = pObj.optInt("id", -1).takeIf { it > 0 } ?: query.playerId,
+            nameAr = translatePlayerName(rawName, playerOverrides, teamOverrides, isArabic = true),
+            nameEn = translatePlayerName(rawName, playerOverrides, teamOverrides, isArabic = false),
+            photoUrl = photoUrl,
+            nationalityAr = translateCountry(nationalityRaw, isArabic = true),
+            nationalityEn = translateCountry(nationalityRaw, isArabic = false),
+            age = ageVal,
+            positionAr = translatePosition(posRaw, isArabic = true),
+            positionEn = translatePosition(posRaw, isArabic = false),
+            teamNameAr = translateTeamName(rawTeam, teamOverrides, isArabic = true),
+            teamNameEn = translateTeamName(rawTeam, teamOverrides, isArabic = false),
+            teamLogoUrl = teamLogo,
+            leagueName = leagueName,
+            appearances = apps,
+            minutes = mins,
+            goals = goalsCnt,
+            assists = assistsCnt,
+            rating = ratingStr,
+            yellowCards = yellowCnt,
+            redCards = redCnt
+        )
+
+        DetailsSessionCache.putPlayer(cacheKey, profile)
+        profile
     }
 }
 
@@ -3286,7 +3761,7 @@ class MainActivity : ComponentActivity() {
         val fallbackMatches = listOf(
             LiveMatchItem(
                 id = "m3",
-                utcIso = "2026-11-25T20:00:00Z",
+                utcIso = "2026-11-26T20:00:00Z",
                 baghdadDate = todayStr,
                 timeText = "23:00",
                 homeTeam = "ريال مدريد",
@@ -3822,15 +4297,241 @@ private fun RemoteCrestBadge(
 }
 
 @Composable
-private fun MatchDetailsDialog(
-    match: LiveMatchItem,
+private fun PlayerStatsDialog(
+    query: SelectedPlayerQuery,
     remoteConfig: RemoteConfigData,
     isArabic: Boolean,
     onDismiss: () -> Unit
 ) {
+    var profile by remember(query) { mutableStateOf<PlayerProfileStats?>(null) }
+    var isLoading by remember(query) { mutableStateOf(true) }
+
+    LaunchedEffect(query) {
+        isLoading = true
+        profile = fetchPlayerProfileAndStats(
+            query = query,
+            playerOverrides = remoteConfig.playerOverrides,
+            teamOverrides = remoteConfig.teamOverrides
+        )
+        isLoading = false
+    }
+
+    val fallbackName = translatePlayerName(query.rawPlayerName, remoteConfig.playerOverrides, remoteConfig.teamOverrides, isArabic)
+    val fallbackTeam = query.rawTeamName?.let { translateTeamName(it, remoteConfig.teamOverrides, isArabic) }.orEmpty()
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.78f))
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(PanelBg)
+                    .border(1.5.dp, BorderGreen, RoundedCornerShape(22.dp))
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = if (isArabic) "ملف اللاعب وإحصائياته" else "Player Profile & Stats",
+                        color = ActiveGreen,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 14.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(TileInnerBg)
+                            .clickable(onClick = onDismiss),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = if (isArabic) "إغلاق" else "Close",
+                            tint = TextWhite,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = ActiveGreen)
+                    }
+                } else {
+                    val p = profile
+                    val displayName = p?.let { if (isArabic) it.nameAr else it.nameEn } ?: fallbackName
+                    val displayTeam = p?.let { if (isArabic) it.teamNameAr else it.teamNameEn } ?: fallbackTeam
+                    val displayCountry = p?.let { if (isArabic) it.nationalityAr else it.nationalityEn }
+                        ?: (if (isArabic) "غير محدد" else "Unknown")
+                    val displayPos = p?.let { if (isArabic) it.positionAr else it.positionEn }
+                        ?: (if (isArabic) "لاعب" else "Player")
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(TileBg)
+                            .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        RemoteCrestBadge(
+                            crestUrl = p?.photoUrl ?: p?.teamLogoUrl,
+                            fallbackLabel = displayName,
+                            modifier = Modifier.size(64.dp)
+                        )
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = displayName,
+                                color = TextWhite,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 16.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                RemoteCrestBadge(
+                                    crestUrl = p?.teamLogoUrl,
+                                    fallbackLabel = displayTeam,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = displayTeam.ifBlank { if (isArabic) "غير محدد" else "Unknown" },
+                                    color = ActiveGreen,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (isArabic) {
+                                    "الدولة: $displayCountry • المركز: $displayPos${p?.age?.let { " • العمر: $it" } ?: ""}"
+                                } else {
+                                    "Country: $displayCountry • Pos: $displayPos${p?.age?.let { " • Age: $it" } ?: ""}"
+                                },
+                                color = TextMuted,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (p != null) {
+                        Text(
+                            text = p.leagueName,
+                            color = TextMuted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        val statRows = listOf(
+                            listOf(
+                                (if (isArabic) "الأهداف" else "Goals") to "${p.goals}",
+                                (if (isArabic) "اسيست" else "Assists") to "${p.assists}",
+                                (if (isArabic) "التقييم" else "Rating") to (p.rating ?: "-")
+                            ),
+                            listOf(
+                                (if (isArabic) "المباريات" else "Apps") to "${p.appearances}",
+                                (if (isArabic) "الدقائق" else "Minutes") to "${p.minutes}",
+                                (if (isArabic) "البطاقات" else "Cards") to "${p.yellowCards}🟨 / ${p.redCards}🟥"
+                            )
+                        )
+
+                        statRows.forEach { rowCells ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                rowCells.forEach { (title, value) ->
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(TileInnerBg)
+                                            .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                                            .padding(vertical = 10.dp, horizontal = 6.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = value,
+                                            color = ActiveGreen,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 14.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = title,
+                                            color = TextMuted,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isArabic) "تعذر جلب تفاصيل اللاعب حالياً" else "Player statistics currently unavailable",
+                                color = TextMuted,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatchDetailsDialog(
+    match: LiveMatchItem,
+    remoteConfig: RemoteConfigData,
+    isArabic: Boolean,
+    onSelectPlayer: (SelectedPlayerQuery) -> Unit,
+    onDismiss: () -> Unit
+) {
     var details by remember(match.id) { mutableStateOf<MatchFullDetails?>(null) }
     var isLoading by remember(match.id) { mutableStateOf(true) }
-    var activeSection by remember(match.id) { mutableIntStateOf(0) } // 0 = Events, 1 = Lineups
+    var activeSection by remember(match.id) { mutableIntStateOf(0) }
 
     LaunchedEffect(match.id) {
         isLoading = true
@@ -4046,6 +4747,7 @@ private fun MatchDetailsDialog(
                                         translatePlayerName(it, remoteConfig.playerOverrides, remoteConfig.teamOverrides, isArabic)
                                     }
                                     val sideLbl = if (ev.isHome) homeDisplay else awayDisplay
+                                    val rawTeamSide = if (ev.isHome) (match.homeTeamRaw ?: match.homeTeam) else (match.awayTeamRaw ?: match.awayTeam)
 
                                     Row(
                                         modifier = Modifier
@@ -4053,6 +4755,16 @@ private fun MatchDetailsDialog(
                                             .clip(RoundedCornerShape(12.dp))
                                             .background(TileBg)
                                             .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
+                                            .clickable {
+                                                onSelectPlayer(
+                                                    SelectedPlayerQuery(
+                                                        playerId = null,
+                                                        rawPlayerName = ev.rawPlayerName,
+                                                        rawTeamName = rawTeamSide,
+                                                        leagueCode = match.leagueCode
+                                                    )
+                                                )
+                                            }
                                             .padding(10.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
@@ -4181,6 +4893,16 @@ private fun MatchDetailsDialog(
                                                     .fillMaxWidth()
                                                     .clip(RoundedCornerShape(8.dp))
                                                     .background(TileInnerBg)
+                                                    .clickable {
+                                                        onSelectPlayer(
+                                                            SelectedPlayerQuery(
+                                                                playerId = pl.playerId,
+                                                                rawPlayerName = pl.rawName,
+                                                                rawTeamName = block.teamName,
+                                                                leagueCode = match.leagueCode
+                                                            )
+                                                        )
+                                                    }
                                                     .padding(horizontal = 8.dp, vertical = 5.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
@@ -4281,7 +5003,7 @@ private fun TeamSeasonScheduleDialog(
                             fontSize = 15.sp
                         )
                         Text(
-                            text = if (isArabic) "جدول مباريات الموسم ($CURRENT_SEASON)" else "Season Schedule ($CURRENT_SEASON)",
+                            text = if (isArabic) "جدول مباريات الموسم" else "Season Schedule",
                             color = ActiveGreen,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
@@ -4406,6 +5128,7 @@ private fun MatchesAndStandingsView(
 
     var selectedMatchForDetails by remember { mutableStateOf<LiveMatchItem?>(null) }
     var selectedTeamForSchedule by remember { mutableStateOf<StandingRowItem?>(null) }
+    var selectedPlayerQuery by remember { mutableStateOf<SelectedPlayerQuery?>(null) }
 
     val standingLeagues = remember(remoteConfig.extraLeagues, remoteConfig.customStandings) {
         val merged = STANDING_LEAGUES.toMutableList()
@@ -4636,6 +5359,7 @@ private fun MatchesAndStandingsView(
             match = matchToOpen,
             remoteConfig = remoteConfig,
             isArabic = isArabic,
+            onSelectPlayer = { q -> selectedPlayerQuery = q },
             onDismiss = { selectedMatchForDetails = null }
         )
     }
@@ -4649,6 +5373,15 @@ private fun MatchesAndStandingsView(
             remoteConfig = remoteConfig,
             isArabic = isArabic,
             onDismiss = { selectedTeamForSchedule = null }
+        )
+    }
+
+    selectedPlayerQuery?.let { playerQ ->
+        PlayerStatsDialog(
+            query = playerQ,
+            remoteConfig = remoteConfig,
+            isArabic = isArabic,
+            onDismiss = { selectedPlayerQuery = null }
         )
     }
 
@@ -5196,7 +5929,7 @@ private fun MatchesAndStandingsView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(TileBg)
+                        .background(PanelBg)
                         .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -5207,7 +5940,7 @@ private fun MatchesAndStandingsView(
                             .clip(RoundedCornerShape(9.dp))
                             .background(if (!showAssistsMode) ActiveGreen else Color.Transparent)
                             .clickable { showAssistsMode = false }
-                            .padding(vertical = 7.dp),
+                            .padding(vertical = 6.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -5217,14 +5950,13 @@ private fun MatchesAndStandingsView(
                             fontSize = 12.sp
                         )
                     }
-
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(9.dp))
                             .background(if (showAssistsMode) ActiveGreen else Color.Transparent)
                             .clickable { showAssistsMode = true }
-                            .padding(vertical = 7.dp),
+                            .padding(vertical = 6.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -5238,226 +5970,120 @@ private fun MatchesAndStandingsView(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                if (!showAssistsMode) {
-                    if (isLoadingScorers && scorersRows.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = ActiveGreen)
-                        }
-                    } else if (scorersRows.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(PanelBg)
-                                .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (isArabic) "لا توجد بيانات هدافين متاحة لهذه البطولة حالياً" else "No scorers data available for this league",
-                                color = TextMuted,
-                                fontSize = 13.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(TileBg)
-                                .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
-                                .padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("#", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
-                            Text(if (isArabic) "اللاعب / النادي" else "Player / Club", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            Text(if (isArabic) "اسيست" else "AST", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(44.dp), textAlign = TextAlign.Center)
-                            Text(if (isArabic) "الأهداف" else "GLS", color = ActiveGreen, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(48.dp), textAlign = TextAlign.Center)
-                        }
+                val activeList = if (showAssistsMode) assistersRows else scorersRows
+                val activeLoading = if (showAssistsMode) isLoadingAssisters else isLoadingScorers
 
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            contentPadding = PaddingValues(bottom = 20.dp)
-                        ) {
-                            items(scorersRows, key = { "${it.rank}_${it.playerName}_${it.teamName}" }) { row ->
-                                val pLbl = translatePlayerName(row.rawPlayerName ?: row.playerName, remoteConfig.playerOverrides, remoteConfig.teamOverrides, isArabic)
-                                val tLbl = translateTeamName(row.rawTeamName ?: row.teamName, remoteConfig.teamOverrides, isArabic)
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(PanelBg)
-                                        .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
-                                        .padding(horizontal = 10.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "${row.rank}",
-                                        color = if (row.rank <= 3) ActiveGreen else TextMuted,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.width(24.dp)
-                                    )
-                                    RemoteCrestBadge(
-                                        crestUrl = row.teamCrestUrl,
-                                        fallbackLabel = tLbl
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = pLbl,
-                                            color = TextWhite,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = tLbl,
-                                            color = TextMuted,
-                                            fontSize = 11.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    Text(
-                                        text = "${row.assists}",
-                                        color = TextMuted,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.width(44.dp),
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = "${row.goals}",
-                                        color = ActiveGreen,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        modifier = Modifier
-                                            .width(48.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(TileInnerBg)
-                                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                                            .padding(vertical = 4.dp),
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
+                if (activeLoading && activeList.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = ActiveGreen)
+                    }
+                } else if (activeList.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(PanelBg)
+                            .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val emptyText = if (showAssistsMode) {
+                            if (isArabic) "لا توجد بيانات اسيست متاحة لهذه البطولة حالياً" else "No assists data available for this league"
+                        } else {
+                            if (isArabic) "لا توجد بيانات هدافين متاحة لهذه البطولة حالياً" else "No scorers data available for this league"
                         }
+                        Text(
+                            text = emptyText,
+                            color = TextMuted,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 } else {
-                    if (isLoadingAssisters && assistersRows.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = ActiveGreen)
-                        }
-                    } else if (assistersRows.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(PanelBg)
-                                .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (isArabic) "لا توجد بيانات اسيست متاحة لهذه البطولة حالياً" else "No assists data available for this league",
-                                color = TextMuted,
-                                fontSize = 13.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(TileBg)
-                                .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
-                                .padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("#", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
-                            Text(if (isArabic) "اللاعب / النادي" else "Player / Club", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            Text(if (isArabic) "اسيست" else "AST", color = ActiveGreen, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.width(48.dp), textAlign = TextAlign.Center)
-                        }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 20.dp)
+                    ) {
+                        items(activeList, key = { "${it.rank}_${it.playerName}_${it.teamName}" }) { row ->
+                            val playerLbl = translatePlayerName(row.rawPlayerName ?: row.playerName, remoteConfig.playerOverrides, remoteConfig.teamOverrides, isArabic)
+                            val teamLbl = translateTeamName(row.rawTeamName ?: row.teamName, remoteConfig.teamOverrides, isArabic)
+                            val countVal = if (showAssistsMode) row.assists else row.goals
+                            val unitLbl = if (showAssistsMode) {
+                                if (isArabic) "اسيست" else "AST"
+                            } else {
+                                if (isArabic) "أهداف" else "GLS"
+                            }
 
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            contentPadding = PaddingValues(bottom = 20.dp)
-                        ) {
-                            items(assistersRows, key = { "${it.rank}_${it.playerName}_${it.teamName}" }) { row ->
-                                val pLbl = translatePlayerName(row.rawPlayerName ?: row.playerName, remoteConfig.playerOverrides, remoteConfig.teamOverrides, isArabic)
-                                val tLbl = translateTeamName(row.rawTeamName ?: row.teamName, remoteConfig.teamOverrides, isArabic)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(PanelBg)
+                                    .border(1.dp, BorderGreen, RoundedCornerShape(14.dp))
+                                    .clickable {
+                                        selectedPlayerQuery = SelectedPlayerQuery(
+                                            playerId = row.playerId,
+                                            rawPlayerName = row.rawPlayerName ?: row.playerName,
+                                            rawTeamName = row.rawTeamName ?: row.teamName,
+                                            leagueCode = selectedScorerLeague.code
+                                        )
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(PanelBg)
-                                        .border(1.dp, BorderGreen, RoundedCornerShape(12.dp))
-                                        .padding(horizontal = 10.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
                                         text = "${row.rank}",
                                         color = if (row.rank <= 3) ActiveGreen else TextMuted,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.width(24.dp)
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.width(22.dp)
                                     )
                                     RemoteCrestBadge(
                                         crestUrl = row.teamCrestUrl,
-                                        fallbackLabel = tLbl
+                                        fallbackLabel = teamLbl,
+                                        modifier = Modifier.size(22.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = pLbl,
+                                            text = playerLbl,
                                             color = TextWhite,
-                                            fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
-                                            text = tLbl,
+                                            text = teamLbl,
                                             color = TextMuted,
                                             fontSize = 11.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                     }
-                                    Text(
-                                        text = "${row.assists}",
-                                        color = ActiveGreen,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        modifier = Modifier
-                                            .width(48.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(TileInnerBg)
-                                            .border(1.dp, BorderGreen, RoundedCornerShape(8.dp))
-                                            .padding(vertical = 4.dp),
-                                        textAlign = TextAlign.Center
-                                    )
                                 }
+
+                                Text(
+                                    text = "$countVal $unitLbl",
+                                    color = ActiveGreen,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(ActiveGreen.copy(alpha = 0.16f))
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                                )
                             }
                         }
                     }
@@ -5467,77 +6093,53 @@ private fun MatchesAndStandingsView(
     }
 }
 
-private data class StatusBadgeUi(
+private data class MatchStatusBadgeInfo(
     val label: String,
     val isLive: Boolean
 )
 
-private fun formatMinuteLabel(rawMinute: String?): String? {
-    val clean = rawMinute?.trim().orEmpty()
-    if (clean.isBlank()) return null
-    return if (clean.endsWith("'")) clean else "$clean'"
-}
-
-private fun buildMatchStatusBadge(match: LiveMatchItem, isArabic: Boolean = true): StatusBadgeUi {
-    val kickMs = try {
+private fun buildMatchStatusBadge(match: LiveMatchItem, isArabic: Boolean): MatchStatusBadgeInfo {
+    val nowMs = System.currentTimeMillis()
+    val kickoffMs = try {
         Instant.parse(match.utcIso).toEpochMilli()
     } catch (_: Exception) {
-        0L
+        null
     }
-    val elapsedMin = if (kickMs > 0L) ((System.currentTimeMillis() - kickMs) / 60000L) else -1L
+
+    val diffMinutes = kickoffMs?.let { ((nowMs - it) / 60_000L).toInt() }
 
     return when (match.status) {
-        MatchFeedStatus.FINISHED -> StatusBadgeUi(if (isArabic) "انتهت" else "FT", isLive = false)
-        MatchFeedStatus.HALFTIME -> StatusBadgeUi(if (isArabic) "استراحة" else "HT", isLive = true)
+        MatchFeedStatus.FINISHED -> MatchStatusBadgeInfo(
+            label = if (isArabic) "انتهت" else "FT",
+            isLive = false
+        )
+        MatchFeedStatus.HALFTIME -> MatchStatusBadgeInfo(
+            label = if (isArabic) "استراحة" else "HT",
+            isLive = true
+        )
         MatchFeedStatus.LIVE -> {
-            val formattedMin = formatMinuteLabel(match.minute)
-                ?: if (elapsedMin in 0..130) "$elapsedMin'" else if (isArabic) "مباشر" else "LIVE"
-            StatusBadgeUi(formattedMin, isLive = true)
+            val minNum = match.minute?.filter { it.isDigit() }?.toIntOrNull()
+            val derivedMin = when {
+                minNum != null && minNum > 0 -> minNum
+                diffMinutes != null && diffMinutes in 1..105 -> diffMinutes
+                else -> null
+            }
+            val label = if (derivedMin != null) "$derivedMin'" else if (isArabic) "مباشر" else "LIVE"
+            MatchStatusBadgeInfo(label = label, isLive = true)
         }
         MatchFeedStatus.SCHEDULED -> {
-            if (elapsedMin in 0..120) {
-                val formattedMin = formatMinuteLabel(match.minute) ?: "$elapsedMin'"
-                StatusBadgeUi(formattedMin, isLive = true)
-            } else if (elapsedMin > 120) {
-                StatusBadgeUi(if (isArabic) "انتهت" else "FT", isLive = false)
+            if (diffMinutes != null && diffMinutes in 0..115) {
+                val liveMin = if (diffMinutes > 45) (diffMinutes - 15).coerceAtLeast(46) else diffMinutes.coerceAtLeast(1)
+                MatchStatusBadgeInfo(label = "$liveMin'", isLive = true)
+            } else if (diffMinutes != null && diffMinutes > 115) {
+                MatchStatusBadgeInfo(
+                    label = if (isArabic) "انتهت" else "FT",
+                    isLive = false
+                )
             } else {
-                StatusBadgeUi(match.timeText, isLive = false)
+                MatchStatusBadgeInfo(label = match.timeText, isLive = false)
             }
         }
-    }
-}
-
-@Composable
-private fun TopNavTab(
-    label: String,
-    iconGlyph: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) ActiveGreen else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = iconGlyph,
-            color = if (selected) Color.White else TextMuted,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            color = if (selected) Color.White else TextMuted,
-            fontSize = 13.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-            maxLines = 1
-        )
     }
 }
 
@@ -5559,45 +6161,62 @@ private fun FullScreenStreamPlayer(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
-    val serverOptions = remember(channel.id, channel.url, channel.backupUrl, channel.servers) {
-        channel.effectiveServers()
+    var isLandscape by remember { mutableStateOf(false) }
+    var controlsVisible by remember { mutableStateOf(true) }
+    var interactionTick by remember { mutableIntStateOf(0) }
+    var isBuffering by remember { mutableStateOf(true) }
+
+    val serverOptions = remember(channel) { channel.effectiveServers() }
+    val activeServerIndices = remember(serverOptions) {
+        serverOptions.indices.filter { serverOptions[it].active }
     }
-    val safeIndex = selectedServerIndex.coerceIn(0, (serverOptions.size - 1).coerceAtLeast(0))
 
-    var showControls by remember(channel.id) { mutableStateOf(true) }
-
-    DisposableEffect(activity) {
-        val window = activity?.window
-        val previousOrientation =
-            activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        val insetsController = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
-
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        if (window != null) {
-            WindowCompat.setDecorFitsSystemWindows(window, false)
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                isBuffering = playbackState == Player.STATE_BUFFERING
+            }
         }
-
-        insetsController?.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window?.attributes?.layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            window?.attributes = window?.attributes
-        }
-
-        insetsController?.hide(
-            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
-        )
-
+        isBuffering = exoPlayer.playbackState == Player.STATE_BUFFERING
+        exoPlayer.addListener(listener)
         onDispose {
-            insetsController?.show(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
-            )
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            activity?.requestedOrientation = previousOrientation
+            exoPlayer.removeListener(listener)
+        }
+    }
+
+    fun applyFullscreenSystemBars(enabled: Boolean) {
+        val win = activity?.window ?: return
+        val controller = WindowCompat.getInsetsController(win, win.decorView)
+        if (enabled) {
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    fun applyOrientation(landscape: Boolean) {
+        isLandscape = landscape
+        activity?.requestedOrientation = if (landscape) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+        applyFullscreenSystemBars(landscape)
+    }
+
+    LaunchedEffect(controlsVisible, interactionTick) {
+        if (controlsVisible) {
+            delay(5000)
+            controlsVisible = false
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            applyFullscreenSystemBars(false)
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
 
@@ -5606,21 +6225,17 @@ private fun FullScreenStreamPlayer(
         PlayerScaleMode.FIT_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
     }
 
+    val activeServerNumber = (activeServerIndices.indexOf(selectedServerIndex) + 1).coerceAtLeast(1)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable { showControls = !showControls },
-        contentAlignment = Alignment.Center
+            .clickable {
+                controlsVisible = !controlsVisible
+                if (controlsVisible) interactionTick++
+            }
     ) {
-        val playerModifier = if (scaleMode == PlayerScaleMode.FIT_16_9) {
-            Modifier
-                .fillMaxHeight()
-                .aspectRatio(16f / 9f)
-        } else {
-            Modifier.fillMaxSize()
-        }
-
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -5629,137 +6244,276 @@ private fun FullScreenStreamPlayer(
                     resizeMode = resizeModeValue
                 }
             },
-            update = { playerView ->
-                playerView.player = exoPlayer
-                playerView.resizeMode = resizeModeValue
+            update = { pv ->
+                pv.player = exoPlayer
+                pv.resizeMode = resizeModeValue
             },
-            modifier = playerModifier
+            modifier = Modifier.fillMaxSize()
         )
 
-        if (showControls) {
+        if (isBuffering) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = ActiveGreen,
+                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
+
+        if (controlsVisible) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
-                    .background(Color.Black.copy(alpha = 0.55f))
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent)
+                        )
+                    )
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    if (serverOptions.size > 1) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            serverOptions.forEachIndexed { idx, srv ->
-                                val isCurrent = safeIndex == idx
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            when {
-                                                isCurrent -> ActiveGreen
-                                                !srv.active -> Color.DarkGray.copy(alpha = 0.45f)
-                                                else -> Color.DarkGray.copy(alpha = 0.85f)
-                                            }
-                                        )
-                                        .clickable { onSelectServer(idx) }
-                                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "${idx + 1}",
-                                        color = if (srv.active || isCurrent) Color.White else TextMuted,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isMuted) LiveRed.copy(alpha = 0.85f) else Color.DarkGray.copy(alpha = 0.85f))
-                            .clickable(onClick = onToggleMute),
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, CircleShape)
+                            .clickable {
+                                applyOrientation(false)
+                                onBackToChannels()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = if (isArabic) "رجوع" else "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Text(
+                        text = channel.name,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
+                            .clickable {
+                                interactionTick++
+                                onToggleMute()
+                            }
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = if (isMuted) "🔇" else "🔊",
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
+                            .clickable {
+                                interactionTick++
+                                onReload()
+                            }
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "↻",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(ActiveGreen.copy(alpha = 0.85f))
-                            .clickable(onClick = onEnterMiniWindow),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "❐",
-                            color = Color.White,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.DarkGray.copy(alpha = 0.85f))
-                            .clickable(onClick = onCycleScaleMode)
-                            .padding(horizontal = 9.dp, vertical = 6.dp),
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
+                            .clickable {
+                                interactionTick++
+                                onCycleScaleMode()
+                            }
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = if (isArabic) scaleMode.labelAr else scaleMode.labelEn,
-                            color = ActiveGreen,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.DarkGray.copy(alpha = 0.85f))
-                            .clickable(onClick = onReload),
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
+                            .clickable {
+                                interactionTick++
+                                applyOrientation(!isLandscape)
+                            }
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = if (isArabic) "إعادة تحميل" else "Reload",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                        Text(
+                            text = if (isLandscape) "⤢" else "⛶",
+                            color = ActiveGreen,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
                         )
                     }
-                }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = channel.name,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        maxLines = 1
-                    )
-                    IconButton(onClick = onBackToChannels) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = if (isArabic) "رجوع" else "Back",
-                            tint = Color.White
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(ActiveGreen.copy(alpha = 0.9f))
+                            .clickable {
+                                applyOrientation(false)
+                                onEnterMiniWindow()
+                            }
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isArabic) "نافذة" else "PIP",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
                         )
                     }
                 }
             }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+                        )
+                    )
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                activeServerIndices.forEachIndexed { displayIdx, actualIdx ->
+                    val srvNum = displayIdx + 1
+                    val isSelectedSrv = actualIdx == selectedServerIndex
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isSelectedSrv) ActiveGreen else Color.Black.copy(alpha = 0.65f))
+                            .border(
+                                1.dp,
+                                if (isSelectedSrv) ActiveGreen else BorderGreen,
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable {
+                                interactionTick++
+                                onSelectServer(actualIdx)
+                            }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isArabic) "سيرفر $srvNum" else "Server $srvNum",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Text(
+                    text = if (isArabic) "سيرفر $activeServerNumber" else "Server $activeServerNumber",
+                    color = ActiveGreen,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.65f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun TopNavTab(
+    label: String,
+    iconGlyph: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bg = if (selected) ActiveGreen else Color.Transparent
+    val fg = if (selected) Color.White else TextMuted
+
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp, horizontal = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = iconGlyph,
+            color = fg,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = label,
+            color = fg,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -5768,20 +6522,20 @@ private fun CategoriesGridView(
     categories: List<CategoryItem>,
     onSelectCategory: (CategoryItem) -> Unit
 ) {
-    val rows = categories.chunked(2)
+    val rows = remember(categories) { categories.chunked(2) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(bottom = 20.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         items(rows) { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 rowItems.forEach { category ->
-                    CategoryGridCard(
+                    CategoryTileCard(
                         category = category,
                         onClick = { onSelectCategory(category) },
                         modifier = Modifier.weight(1f)
@@ -5796,46 +6550,48 @@ private fun CategoriesGridView(
 }
 
 @Composable
-private fun CategoryGridCard(
+private fun CategoryTileCard(
     category: CategoryItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(TileBg)
-            .border(1.dp, BorderGreen, RoundedCornerShape(22.dp))
+            .border(1.dp, BorderGreen, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
-            .padding(12.dp),
+            .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(112.dp)
+                .height(106.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(TileInnerBg),
             contentAlignment = Alignment.Center
         ) {
-            ChannelOrCategoryArtwork(
+            BrandLogoBadge(
                 assetName = category.logoAssetName,
-                imageUrl = category.logoUrl,
-                contentDescription = category.name,
+                logoUrl = category.logoUrl,
                 badgeText = category.badgeText,
                 badgeBg = category.badgeBg,
-                badgeTextColor = category.badgeTextColor
+                badgeTextColor = category.badgeTextColor,
+                modifier = Modifier.size(74.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Text(
             text = category.name,
             color = TextWhite,
-            fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
-            maxLines = 1
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -5848,105 +6604,109 @@ private fun CategoryChannelsListView(
     onBackToCategories: () -> Unit,
     onSelectChannel: (ChannelItem) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 20.dp)
-    ) {
-        item(key = "cat_header") {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(PanelBg)
+                .border(1.dp, BorderGreen, RoundedCornerShape(16.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(ActiveGreen.copy(alpha = 0.16f))
+                    .clickable(onClick = onBackToCategories)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = if (isArabic) "الباقات" else "Categories",
+                    tint = ActiveGreen,
+                    modifier = Modifier.size(16.dp)
+                )
                 Text(
-                    text = if (isArabic) "← رجوع للتصنيفات" else "← Back to Categories",
+                    text = if (isArabic) "الباقات" else "Categories",
                     color = ActiveGreen,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(PanelBg)
-                        .border(1.dp, BorderGreen, RoundedCornerShape(10.dp))
-                        .clickable(onClick = onBackToCategories)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                )
-
-                Text(
-                    text = "${category.name} (${category.channels.size})",
-                    color = TextWhite,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 12.sp
                 )
             }
+
+            Text(
+                text = category.name,
+                color = TextWhite,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
+            )
+
+            Text(
+                text = "${category.channels.size}",
+                color = TextMuted,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
+            )
         }
 
-        val channelRows = category.channels.chunked(2)
-        items(channelRows.size) { rowIndex ->
-            val rowChannels = channelRows[rowIndex]
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rowChannels.forEachIndexed { colIndex, channel ->
-                    val isSelected = selectedChannel?.id == channel.id
-                    val channelNumber = rowIndex * 2 + colIndex + 1
+        Spacer(modifier = Modifier.height(10.dp))
 
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (isSelected) Color(0xFF0F2A1E) else PanelBg)
-                            .border(
-                                width = if (isSelected) 1.5.dp else 1.dp,
-                                color = if (isSelected) ActiveGreen else BorderGreen,
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .clickable { onSelectChannel(channel) }
-                            .padding(10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            items(category.channels, key = { it.id }) { channel ->
+                val isSelected = selectedChannel?.id == channel.id
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (isSelected) Color(0xFF0E2419) else PanelBg)
+                        .border(
+                            width = if (isSelected) 1.5.dp else 1.dp,
+                            color = if (isSelected) ActiveGreen else BorderGreen,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable { onSelectChannel(channel) }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(105.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color.Black.copy(alpha = 0.35f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            ChannelOrCategoryArtwork(
-                                assetName = channel.logoAssetName,
-                                imageUrl = channel.logoUrl,
-                                contentDescription = channel.name,
-                                badgeText = channel.name.take(2).uppercase(),
-                                badgeBg = TileInnerBg,
-                                badgeTextColor = ActiveGreen,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = if (isArabic) "قناة $channelNumber" else "CH $channelNumber",
-                            color = TextMuted,
-                            fontSize = 11.sp,
-                            maxLines = 1
+                        BrandLogoBadge(
+                            assetName = channel.logoAssetName,
+                            logoUrl = channel.logoUrl ?: category.logoUrl,
+                            badgeText = channel.badgeText,
+                            badgeBg = channel.badgeBg,
+                            badgeTextColor = channel.badgeTextColor,
+                            modifier = Modifier.size(44.dp)
                         )
 
                         Text(
                             text = channel.name,
                             color = TextWhite,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             maxLines = 1,
-                            textAlign = TextAlign.Center
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                }
 
-                if (rowChannels.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "▶",
+                        color = ActiveGreen,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
@@ -5956,145 +6716,125 @@ private fun CategoryChannelsListView(
 @Composable
 private fun AccountsTabView(accounts: List<SocialAccountItem>) {
     val context = LocalContext.current
-    val rows = accounts.chunked(2)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(bottom = 20.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        items(rows) { rowItems ->
+        items(accounts, key = { it.id }) { acc ->
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                rowItems.forEach { acc ->
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(TileBg)
-                            .border(1.dp, BorderGreen, RoundedCornerShape(22.dp))
-                            .clickable {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(acc.url))
-                                context.startActivity(intent)
-                            }
-                            .padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(112.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(TileInnerBg),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            ChannelOrCategoryArtwork(
-                                assetName = acc.logoAssetName,
-                                imageUrl = acc.logoUrl,
-                                contentDescription = acc.title,
-                                badgeText = acc.fallbackGlyph,
-                                badgeBg = acc.badgeBg,
-                                badgeTextColor = acc.badgeTextColor
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text(
-                            text = acc.title,
-                            color = TextWhite,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center
-                        )
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(PanelBg)
+                    .border(1.dp, BorderGreen, RoundedCornerShape(18.dp))
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(acc.url))
+                        context.startActivity(intent)
                     }
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    BrandLogoBadge(
+                        assetName = acc.logoAssetName,
+                        logoUrl = acc.logoUrl,
+                        badgeText = acc.fallbackGlyph,
+                        badgeBg = acc.badgeBg,
+                        badgeTextColor = acc.badgeTextColor,
+                        modifier = Modifier.size(46.dp)
+                    )
+
+                    Text(
+                        text = acc.title,
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
-                if (rowItems.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+
+                Text(
+                    text = "↗",
+                    color = ActiveGreen,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
 }
 
 @Composable
-private fun rememberDrawableId(assetName: String): Int {
-    val context = LocalContext.current
-    return remember(assetName) {
-        context.resources.getIdentifier(assetName, "drawable", context.packageName)
-    }
-}
-
-@Composable
-private fun ChannelOrCategoryArtwork(
+private fun BrandLogoBadge(
     assetName: String,
-    contentDescription: String,
+    logoUrl: String? = null,
     badgeText: String,
     badgeBg: Color,
     badgeTextColor: Color,
-    modifier: Modifier = Modifier,
-    imageUrl: String? = null
+    modifier: Modifier = Modifier
 ) {
-    val cleanUrl = imageUrl?.trim()?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
-    var remoteBitmap by remember(cleanUrl) {
-        mutableStateOf(cleanUrl?.let { CrestMemoryCache.get(it) })
+    val drawableId = rememberDrawableId(assetName)
+    var remoteBitmap by remember(logoUrl) {
+        mutableStateOf(logoUrl?.let { CrestMemoryCache.get(it) })
     }
 
-    LaunchedEffect(cleanUrl) {
-        if (remoteBitmap == null && !cleanUrl.isNullOrBlank()) {
-            remoteBitmap = fetchBitmapFromUrl(cleanUrl)
+    LaunchedEffect(logoUrl, drawableId) {
+        if (drawableId == 0 && remoteBitmap == null && !logoUrl.isNullOrBlank()) {
+            remoteBitmap = fetchBitmapFromUrl(logoUrl)
         }
     }
 
-    val drawableId = rememberDrawableId(assetName)
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(112.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(TileInnerBg),
+        modifier = modifier.clip(RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center
     ) {
-        val loadedRemote = remoteBitmap
-        if (loadedRemote != null) {
-            Image(
-                bitmap = loadedRemote.asImageBitmap(),
-                contentDescription = contentDescription,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp)
-            )
-        } else if (drawableId != 0) {
+        val loadedBmp = remoteBitmap
+        if (drawableId != 0) {
             Image(
                 painter = painterResource(id = drawableId),
-                contentDescription = contentDescription,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp)
+                contentDescription = badgeText,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (loadedBmp != null) {
+            Image(
+                bitmap = loadedBmp.asImageBitmap(),
+                contentDescription = badgeText,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
         } else {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(badgeBg)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                    .fillMaxSize()
+                    .background(badgeBg),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = badgeText,
                     color = badgeTextColor,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = if (badgeText.length <= 2) 26.sp else 14.sp,
+                    fontSize = if (badgeText.length <= 2) 18.sp else 11.sp,
+                    lineHeight = 13.sp,
                     textAlign = TextAlign.Center,
-                    lineHeight = 16.sp
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun rememberDrawableId(name: String): Int {
+    val context = LocalContext.current
+    return remember(name) {
+        if (name.isBlank()) 0
+        else context.resources.getIdentifier(name, "drawable", context.packageName)
     }
 }
