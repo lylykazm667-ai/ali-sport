@@ -131,7 +131,7 @@ private const val MATCH_DETAILS_CACHE_PREFIX = "match_details_v2_"
 private const val TEAM_SEASON_CACHE_PREFIX = "team_season_v2_"
 
 enum class CategoryId {
-    BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH
+    BEIN, ALWAN, ALKASS, ABUDHABI, THMANYAH, ALRABIAA
 }
 
 enum class MatchFeedStatus {
