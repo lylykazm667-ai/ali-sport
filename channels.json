@@ -182,13 +182,45 @@
           "badgeText": "ALWAN 5"
         },
         {
-          "id": "alwan-6",
-          "name": "Alwan Sport 6",
-          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
-          "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
-          "logoAssetName": "alw6",
-          "badgeText": "ALWAN 6"
-        }
+      "id": "alwan-6",
+      "name": "Alwan Sport 6",
+      "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
+      "backupUrl": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237026",
+      "logoAssetName": "alw6",
+      "badgeText": "ALWAN 6"
+    },
+    {
+      "id": "alwan-7",
+      "name": "Alwan Sport 7",
+      "url": "http://195.128.27.253/sTvn3Df/kq7knZy/2098830",
+      "backupUrl": null,
+      "logoAssetName": "alw7",
+      "badgeText": "ALWAN 7"
+    },
+    {
+      "id": "alwan-8",
+      "name": "Alwan Sport 8",
+      "url": "http://195.128.27.253/sTvn3Df/kq7knZy/2098831",
+      "backupUrl": null,
+      "logoAssetName": "alw8",
+      "badgeText": "ALWAN 8"
+    },
+    {
+      "id": "alwan-9",
+      "name": "Alwan Sport 9",
+      "url": "http://195.128.27.253/sTvn3Df/kq7knZy/2098832",
+      "backupUrl": null,
+      "logoAssetName": "alw9",
+      "badgeText": "ALWAN 9"
+    },
+    {
+      "id": "alwan-10",
+      "name": "Alwan Sport 10",
+      "url": "http://195.128.27.253/sTvn3Df/kq7knZy/2098833",
+      "backupUrl": null,
+      "logoAssetName": "alw10",
+      "badgeText": "ALWAN 10"
+    }
       ]
     },
     {
