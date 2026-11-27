@@ -3827,7 +3827,7 @@ val rabiaaChannels = listOf(
             CategoryItem(
         id = CategoryId.ALRABIAA,
         name = "Alrabiaa Sport",
-        logoAssetName = "Alrabiaa Sport",
+        logoAssetName = "alrabiaa_sport",
         badgeText = "ALRABIAA",
         badgeBg = Color(0xFF0B1C14),
         channels = rabiaaChannels
