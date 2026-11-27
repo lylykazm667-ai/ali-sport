@@ -3890,9 +3890,15 @@ fun AliKazemSportApp(
             .build()
     }
 
-        val httpDataSourceFactory = remember {
+            val httpDataSourceFactory = remember {
         DefaultHttpDataSource.Factory()
             .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            .setDefaultRequestProperties(
+                mapOf(
+                    "Referer" to "http://195.128.27.253/",
+                    "Origin" to "http://195.128.27.253"
+                )
+            )
             .setConnectTimeoutMs(15000)
             .setReadTimeoutMs(15000)
             .setAllowCrossProtocolRedirects(true)
