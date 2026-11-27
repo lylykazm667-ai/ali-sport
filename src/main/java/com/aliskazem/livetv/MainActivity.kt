@@ -3888,8 +3888,22 @@ fun AliKazemSportApp(
             .build()
     }
 
+        val httpDataSourceFactory = remember {
+        DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(15000)
+            .setAllowCrossProtocolRedirects(true)
+    }
+
+    val mediaSourceFactory = remember(httpDataSourceFactory) {
+        DefaultMediaSourceFactory(context)
+            .setDataSourceFactory(httpDataSourceFactory)
+    }
+
     val sharedExoPlayer = remember {
         ExoPlayer.Builder(context)
+            .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
             .build()
     }
