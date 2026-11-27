@@ -3780,7 +3780,6 @@ class MainActivity : ComponentActivity() {
         badgeBg = Color(0xFF0B1C14)
     )
 )
-        )
 
         val categories = listOf(
             CategoryItem(
