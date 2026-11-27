@@ -3740,6 +3740,46 @@ class MainActivity : ComponentActivity() {
                 badgeText = "▲ 3",
                 badgeBg = Color(0xFF0A1710)
             )
+            val rabiaaChannels = listOf(
+    ChannelItem(
+        id = "rabiaa-1",
+        name = "Alrabiaa Sport 1",
+        url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
+        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027474",
+        servers = listOf(
+            StreamServerOption(
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
+                active = true
+            ),
+            StreamServerOption(
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027474",
+                active = true
+            )
+        ),
+        logoAssetName = "alr1",
+        badgeText = "الرابعة 1",
+        badgeBg = Color(0xFF0B1C14)
+    ),
+    ChannelItem(
+        id = "rabiaa-2",
+        name = "Alrabiaa Sport 2",
+        url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
+        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
+        servers = listOf(
+            StreamServerOption(
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
+                active = true
+            ),
+            StreamServerOption(
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
+                active = true
+            )
+        ),
+        logoAssetName = "alr2",
+        badgeText = "الرابعة 2",
+        badgeBg = Color(0xFF0B1C14)
+    )
+)
         )
 
         val categories = listOf(
@@ -3782,9 +3822,17 @@ class MainActivity : ComponentActivity() {
                 logoAssetName = "thmanyah",
                 badgeText = "▲",
                 badgeBg = Color(0xFF0A1710),
-                channels = thmanyahChannels
-            )
+                            channels = thmanyahChannels
+        ),
+        CategoryItem(
+            id = CategoryId.ALRABIAA,
+            name = "Alrabiaa Sport",
+            logoAssetName = "alr1",
+            badgeText = "ALRABIAA",
+            badgeBg = Color(0xFF0B1C14),
+            channels = rabiaaChannels
         )
+    )
 
         val todayStr = currentBaghdadTodayKey()
 
