@@ -375,14 +375,36 @@
           "badgeText": "▲ 2"
         },
         {
-          "id": "thmanyah-3",
-          "name": "Thmanyah 3",
-          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236893",
-          "backupUrl": null,
-          "logoAssetName": "thmanyah",
-          "badgeText": "▲ 3"
-        }
-      ]
-    }
-  ]
-}
+                  "name": "Thmanyah 3",
+        "url": "http://legendking.net:8080/yzidalaoui/1EHOeGLDvDas1Ba/236893",
+        "backupUrl": null,
+        "logoAssetName": "thmanyah",
+        "badgeText": "٨ ٣"
+      }
+    ]
+  },
+  {
+    "id": "ALRABIAA",
+    "name": "Alrabiaa Sport",
+    "logoAssetName": "alr1",
+    "badgeText": "الرابعة",
+    "channels": [
+      {
+        "id": "rabiaa-1",
+        "name": "Alrabiaa Sport 1",
+        "url": "http://8k26.site:80/Amerpro1/MS754XT/1027477",
+        "backupUrl": "http://8k26.site:80/Amerpro1/MS754XT/1027474",
+        "logoAssetName": "alr1",
+        "badgeText": "الرابعة 1"
+      },
+      {
+        "id": "rabiaa-2",
+        "name": "Alrabiaa Sport 2",
+        "url": "http://8k26.site:80/Amerpro1/MS754XT/1027478",
+        "backupUrl": "http://8k26.site:80/Amerpro1/MS754XT/1027475",
+        "logoAssetName": "alr2",
+        "badgeText": "الرابعة 2"
+      }
+    ]
+  }
+]
