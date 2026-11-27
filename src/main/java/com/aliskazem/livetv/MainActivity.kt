@@ -3746,15 +3746,15 @@ val rabiaaChannels = listOf(
     ChannelItem(
         id = "rabiaa-1",
         name = "Alrabiaa Sport 1",
-        url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
-        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027474",
+        url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
+        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
         servers = listOf(
             StreamServerOption(
-                url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
                 active = true
             ),
             StreamServerOption(
-                url = "http://8k26.site:80/Amerpro1/MS754XT/1027474",
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
                 active = true
             )
         ),
@@ -3765,15 +3765,15 @@ val rabiaaChannels = listOf(
     ChannelItem(
         id = "rabiaa-2",
         name = "Alrabiaa Sport 2",
-        url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
-        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
+        url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
+        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
         servers = listOf(
             StreamServerOption(
-                url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
                 active = true
             ),
             StreamServerOption(
-                url = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
                 active = true
             )
         ),
@@ -3781,8 +3781,7 @@ val rabiaaChannels = listOf(
         badgeText = "الرابعة 2",
         badgeBg = Color(0xFF0B1C14)
     )
-)
- 
+) 
          val categories = listOf(
             CategoryItem(
                 id = CategoryId.BEIN,
@@ -3825,14 +3824,14 @@ val rabiaaChannels = listOf(
                 badgeBg = Color(0xFF0A1710),
                             channels = thmanyahChannels
         ),
-        CategoryItem(
-            id = CategoryId.ALRABIAA,
-            name = "Alrabiaa Sport",
-            logoAssetName = "alr1",
-            badgeText = "ALRABIAA",
-            badgeBg = Color(0xFF0B1C14),
-            channels = rabiaaChannels
-        )
+            CategoryItem(
+        id = CategoryId.ALRABIAA,
+        name = "Alrabiaa Sport",
+        logoAssetName = "Alrabiaa Sport",
+        badgeText = "ALRABIAA",
+        badgeBg = Color(0xFF0B1C14),
+        channels = rabiaaChannels
+    )
     )
 
         val todayStr = currentBaghdadTodayKey()
