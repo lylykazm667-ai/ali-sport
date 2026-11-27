@@ -6828,7 +6828,6 @@ private fun AccountsTabView(accounts: List<SocialAccountItem>) {
     }
 }
 
-
 @Composable
 private fun BrandLogoBadge(
     assetName: String,
