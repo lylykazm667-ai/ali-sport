@@ -3774,14 +3774,13 @@ class MainActivity : ComponentActivity() {
                 url = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
                 active = true
             )
-        ),
-        logoAssetName = "alr2",
+        ),        logoAssetName = "alr2",
         badgeText = "الرابعة 2",
         badgeBg = Color(0xFF0B1C14)
     )
 )
-
-        val categories = listOf(
+ 
+         val categories = listOf(
             CategoryItem(
                 id = CategoryId.BEIN,
                 name = "bein sport",
