@@ -3731,16 +3731,18 @@ class MainActivity : ComponentActivity() {
                 logoAssetName = "thmanyah",
                 badgeText = "▲ 2",
                 badgeBg = Color(0xFF0A1710)
-            ),
-            ChannelItem(
-                id = "thmanyah-3",
-                name = "Thmanyah 3",
-                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236893",
-                logoAssetName = "thmanyah",
-                badgeText = "▲ 3",
-                badgeBg = Color(0xFF0A1710)
-            )
-            val rabiaaChannels = listOf(
+                    ),
+        ChannelItem(
+            id = "thmanyah-3",
+            name = "Thmanyah 3",
+            url = "http://legendking.net:8080/yzidalaoui/1EHOeGLDvDas1Ba/236893",
+            logoAssetName = "thmanyah",
+            badgeText = "٨ ٣",
+            badgeBg = Color(0xFF0A1710)
+        )
+    )
+
+val rabiaaChannels = listOf(
     ChannelItem(
         id = "rabiaa-1",
         name = "Alrabiaa Sport 1",
@@ -3774,7 +3776,8 @@ class MainActivity : ComponentActivity() {
                 url = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
                 active = true
             )
-        ),        logoAssetName = "alr2",
+        ),
+        logoAssetName = "alr2",
         badgeText = "الرابعة 2",
         badgeBg = Color(0xFF0B1C14)
     )
