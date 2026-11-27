@@ -3618,7 +3618,43 @@ class MainActivity : ComponentActivity() {
                 badgeText = "ALWAN 6",
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80)
-            )
+            ),
+        ChannelItem(
+        id = "alwan-7",
+        name = "Alwan Sport 7",
+        url = "http://8k26.site:80/Amrpro1/M57S4XT/1889219",
+        logoAssetName = "alw7",
+        badgeText = "ALWAN 7",
+        badgeBg = Color(0xFF00281E),
+        badgeTextColor = Color(0xFFFFD859)
+    ),
+    ChannelItem(
+        id = "alwan-8",
+        name = "Alwan Sport 8",
+        url = "http://8k26.site:80/Amrpro1/M57S4XT/1889220",
+        logoAssetName = "alw8",
+        badgeText = "ALWAN 8",
+        badgeBg = Color(0xFF00281E),
+        badgeTextColor = Color(0xFFFFD859)
+    ),
+    ChannelItem(
+        id = "alwan-9",
+        name = "Alwan Sport 9",
+        url = "http://8k26.site:80/Amrpro1/M57S4XT/1889221",
+        logoAssetName = "alw9",
+        badgeText = "ALWAN 9",
+        badgeBg = Color(0xFF00281E),
+        badgeTextColor = Color(0xFFFFD859)
+    ),
+    ChannelItem(
+        id = "alwan-10",
+        name = "Alwan Sport 10",
+        url = "http://8k26.site:80/Amrpro1/M57S4XT/1889222",
+        logoAssetName = "alw10",
+        badgeText = "ALWAN 10",
+        badgeBg = Color(0xFF00281E),
+        badgeTextColor = Color(0xFFFFD859)
+    )
         )
 
         val alkassChannels = listOf(
@@ -3677,7 +3713,31 @@ class MainActivity : ComponentActivity() {
                 logoAssetName = "alk7",
                 badgeText = "الكأس 7",
                 badgeBg = Color(0xFF881337)
-            )
+            ),
+        ChannelItem(
+        id = "alkass-8",
+        name = "Alkass Sport 8",
+        url = "http://link4king.xyz:8080/MidoAchraf2026/pukeULPBsNe4LR/276722",
+        logoAssetName = "alk8",
+        badgeText = "الكأس 8",
+        badgeBg = Color(0xFF881337)
+    ),
+    ChannelItem(
+        id = "alkass-9",
+        name = "Alkass Sport 9",
+        url = "http://link4king.xyz:8080/MidoAchraf2026/pukeULPBsNe4LR/276724",
+        logoAssetName = "alk9",
+        badgeText = "الكأس 9",
+        badgeBg = Color(0xFF881337)
+    ),
+    ChannelItem(
+        id = "alkass-10",
+        name = "Alkass Sport 10",
+        url = "http://link4king.xyz:8080/MidoAchraf2026/pukeULPBsNe4LR/276726",
+        logoAssetName = "alk10",
+        badgeText = "الكأس 10",
+        badgeBg = Color(0xFF881337)
+    )
         )
 
         val abudhabiChannels = listOf(
