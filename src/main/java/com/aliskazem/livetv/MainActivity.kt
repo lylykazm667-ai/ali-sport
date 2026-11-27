@@ -3619,10 +3619,10 @@ class MainActivity : ComponentActivity() {
                 badgeBg = Color(0xFF0D2818),
                 badgeTextColor = Color(0xFF4ADE80)
             ),
-        ChannelItem(
+            ChannelItem(
         id = "alwan-7",
         name = "Alwan Sport 7",
-        url = "http://8k26.site:80/Amrpro1/M57S4XT/1889219",
+        url = "http://8k26.site:80/Amrpro1/M57S4XT/1339219",
         logoAssetName = "alw7",
         badgeText = "ALWAN 7",
         badgeBg = Color(0xFF00281E),
@@ -3631,7 +3631,7 @@ class MainActivity : ComponentActivity() {
     ChannelItem(
         id = "alwan-8",
         name = "Alwan Sport 8",
-        url = "http://8k26.site:80/Amrpro1/M57S4XT/1889220",
+        url = "http://8k26.site:80/Amrpro1/M57S4XT/1339220",
         logoAssetName = "alw8",
         badgeText = "ALWAN 8",
         badgeBg = Color(0xFF00281E),
@@ -3640,7 +3640,7 @@ class MainActivity : ComponentActivity() {
     ChannelItem(
         id = "alwan-9",
         name = "Alwan Sport 9",
-        url = "http://8k26.site:80/Amrpro1/M57S4XT/1889221",
+        url = "http://8k26.site:80/Amrpro1/M57S4XT/1339221",
         logoAssetName = "alw9",
         badgeText = "ALWAN 9",
         badgeBg = Color(0xFF00281E),
@@ -3649,7 +3649,7 @@ class MainActivity : ComponentActivity() {
     ChannelItem(
         id = "alwan-10",
         name = "Alwan Sport 10",
-        url = "http://8k26.site:80/Amrpro1/M57S4XT/1889222",
+        url = "http://8k26.site:80/Amrpro1/M57S4XT/1339222",
         logoAssetName = "alw10",
         badgeText = "ALWAN 10",
         badgeBg = Color(0xFF00281E),
@@ -3709,15 +3709,15 @@ class MainActivity : ComponentActivity() {
             ChannelItem(
                 id = "alkass-7",
                 name = "Alkass Sport 7",
-                url = "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/164857",
+                url = "http://link4king.xyz:8080/NsTbRaCHID@2026/puksWLBPBxNo4LR/270719",
                 logoAssetName = "alk7",
                 badgeText = "الكأس 7",
                 badgeBg = Color(0xFF881337)
             ),
-        ChannelItem(
+            ChannelItem(
         id = "alkass-8",
         name = "Alkass Sport 8",
-        url = "http://link4king.xyz:8080/MidoAchraf2026/pukeULPBsNe4LR/276722",
+        url = "http://link4king.xyz:8080/NsTbRaCHID@2026/puksWLBPBxNo4LR/270722",
         logoAssetName = "alk8",
         badgeText = "الكأس 8",
         badgeBg = Color(0xFF881337)
@@ -3725,7 +3725,7 @@ class MainActivity : ComponentActivity() {
     ChannelItem(
         id = "alkass-9",
         name = "Alkass Sport 9",
-        url = "http://link4king.xyz:8080/MidoAchraf2026/pukeULPBsNe4LR/276724",
+        url = "http://link4king.xyz:8080/NsTbRaCHID@2026/puksWLBPBxNo4LR/270725",
         logoAssetName = "alk9",
         badgeText = "الكأس 9",
         badgeBg = Color(0xFF881337)
@@ -3733,7 +3733,7 @@ class MainActivity : ComponentActivity() {
     ChannelItem(
         id = "alkass-10",
         name = "Alkass Sport 10",
-        url = "http://link4king.xyz:8080/MidoAchraf2026/pukeULPBsNe4LR/276726",
+        url = "http://link4king.xyz:8080/NsTbRaCHID@2026/puksWLBPBxNo4LR/270728",
         logoAssetName = "alk10",
         badgeText = "الكأس 10",
         badgeBg = Color(0xFF881337)
