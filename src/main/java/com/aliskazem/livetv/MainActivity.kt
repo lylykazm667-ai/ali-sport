@@ -787,6 +787,7 @@ private fun resolveCategoryId(raw: String, index: Int): CategoryId {
         "ALKASS" -> CategoryId.ALKASS
         "ABUDHABI" -> CategoryId.ABUDHABI
         "THMANYAH" -> CategoryId.THMANYAH
+        "ALRABIAA" -> CategoryId.ALRABIAA
         else -> CategoryId.entries.getOrElse(index) { CategoryId.BEIN }
     }
 }
