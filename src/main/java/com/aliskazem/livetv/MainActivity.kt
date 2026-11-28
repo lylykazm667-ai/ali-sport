@@ -3987,7 +3987,7 @@ fun AliKazemSportApp(
         serverOptions.getOrNull(safeServerIndex)?.url ?: ch.url
     }
 
-    val loadControl = remember {
+        val loadControl = remember {
         DefaultLoadControl.Builder()
             .setBufferDurationsMs(
                 15000,
@@ -3999,7 +3999,7 @@ fun AliKazemSportApp(
             .build()
     }
 
-                    val httpDataSourceFactory = remember {
+    val httpDataSourceFactory = remember {
         DefaultHttpDataSource.Factory()
             .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
             .setConnectTimeoutMs(15000)
@@ -4008,7 +4008,8 @@ fun AliKazemSportApp(
     }
 
     val mediaSourceFactory = remember(httpDataSourceFactory) {
-        DefaultMediaSourceFactory(httpDataSourceFactory)
+        DefaultMediaSourceFactory(context)
+            .setDataSourceFactory(httpDataSourceFactory)
     }
 
     val sharedExoPlayer = remember {
