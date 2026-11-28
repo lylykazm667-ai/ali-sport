@@ -3807,15 +3807,15 @@ val rabiaaChannels = listOf(
     ChannelItem(
         id = "rabiaa-1",
         name = "Alrabiaa Sport 1",
-        url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
-        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
+        url = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
+        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
         servers = listOf(
             StreamServerOption(
-                url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
                 active = true
             ),
             StreamServerOption(
-                url = "http://8k26.site:80/Amerpro1/MS754XT/1027478",
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027475",
                 active = true
             )
         ),
@@ -3826,15 +3826,15 @@ val rabiaaChannels = listOf(
     ChannelItem(
         id = "rabiaa-2",
         name = "Alrabiaa Sport 2",
-        url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
-        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
+        url = "http://8k26.site:80/Amerpro1/MS754XT/1027474",
+        backupUrl = "http://8k26.site:80/Amerpro1/MS754XT/1027474",
         servers = listOf(
             StreamServerOption(
-                url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027474",
                 active = true
             ),
             StreamServerOption(
-                url = "http://8k26.site:80/Amerpro1/MS754XT/1027477",
+                url = "http://8k26.site:80/Amerpro1/MS754XT/1027474",
                 active = true
             )
         ),
