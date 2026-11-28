@@ -182,45 +182,45 @@
           "badgeText": "ALWAN 5"
         },
         {
-      "id": "alwan-6",
-      "name": "Alwan Sport 6",
-      "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
-      "backupUrl": "http://8k26.site:80/Amerpro1/MS754XT/1339218",
-      "logoAssetName": "alw6",
-      "badgeText": "ALWAN 6"
-    },
-    {
-      "id": "alwan-7",
-      "name": "Alwan Sport 7",
-      "url": "http://8k26.site:80/Amerpro1/MS754XT/1339219",
-      "backupUrl": null,
-      "logoAssetName": "alw7",
-      "badgeText": "ALWAN 7"
-    },
-    {
-      "id": "alwan-8",
-      "name": "Alwan Sport 8",
-      "url": "http://8k26.site:80/Amerpro1/MS754XT/1339220",
-      "backupUrl": null,
-      "logoAssetName": "alw8",
-      "badgeText": "ALWAN 8"
-    },
-    {
-      "id": "alwan-9",
-      "name": "Alwan Sport 9",
-      "url": "http://8k26.site:80/Amerpro1/MS754XT/1339221",
-      "backupUrl": null,
-      "logoAssetName": "alw9",
-      "badgeText": "ALWAN 9"
-    },
-    {
-      "id": "alwan-10",
-      "name": "Alwan Sport 10",
-      "url": "http://8k26.site:80/Amerpro1/MS754XT/1339222",
-      "backupUrl": null,
-      "logoAssetName": "alw10",
-      "badgeText": "ALWAN 10"
-    }
+          "id": "alwan-6",
+          "name": "Alwan Sport 6",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/237029",
+          "backupUrl": "http://8k26.site:80/Amerpro1/MS754XT/1339218",
+          "logoAssetName": "alw6",
+          "badgeText": "ALWAN 6"
+        },
+        {
+          "id": "alwan-7",
+          "name": "Alwan Sport 7",
+          "url": "http://8k26.site:80/Amerpro1/MS754XT/1339219",
+          "backupUrl": null,
+          "logoAssetName": "alw7",
+          "badgeText": "ALWAN 7"
+        },
+        {
+          "id": "alwan-8",
+          "name": "Alwan Sport 8",
+          "url": "http://8k26.site:80/Amerpro1/MS754XT/1339220",
+          "backupUrl": null,
+          "logoAssetName": "alw8",
+          "badgeText": "ALWAN 8"
+        },
+        {
+          "id": "alwan-9",
+          "name": "Alwan Sport 9",
+          "url": "http://8k26.site:80/Amerpro1/MS754XT/1339221",
+          "backupUrl": null,
+          "logoAssetName": "alw9",
+          "badgeText": "ALWAN 9"
+        },
+        {
+          "id": "alwan-10",
+          "name": "Alwan Sport 10",
+          "url": "http://8k26.site:80/Amerpro1/MS754XT/1339222",
+          "backupUrl": null,
+          "logoAssetName": "alw10",
+          "badgeText": "ALWAN 10"
+        }
       ]
     },
     {
@@ -282,36 +282,35 @@
           "name": "Alkass Sport 7",
           "url": "http://link4king.xyz:8080/NsIbRaCHiD@2026/puksMLBPBxNo4LR/270719",
           "backupUrl": null,
-                  "logoAssetName": "alk7",
-        "badgeText": "الكاس 7"
-      },
-      {
-        "id": "alkass-8",
-        "name": "Alkass Sport 8",
-        "url": "http://link4king.xyz:8080/NsIbRaCHiD@2026/puksMLBPBxNo4LR/270722",
-        "backupUrl": null,
-        "logoAssetName": "alk8",
-        "badgeText": "الكاس 8"
-      },
-      {
-        "id": "alkass-9",
-        "name": "Alkass Sport 9",
-        "url": "http://link4king.xyz:8080/NsIbRaCHiD@2026/puksMLBPBxNo4LR/270725",
-        "backupUrl": null,
-        "logoAssetName": "alk9",
-        "badgeText": "الكاس 9"
-      },
-      {
-        "id": "alkass-10",
-        "name": "Alkass Sport 10",
-        "url": "http://link4king.xyz:8080/NsIbRaCHiD@2026/puksMLBPBxNo4LR/270728",
-        "backupUrl": null,
-        "logoAssetName": "alk10",
-        "badgeText": "الكاس 10"
-      }
-    ]
-  },
-
+          "logoAssetName": "alk7",
+          "badgeText": "الكاس 7"
+        },
+        {
+          "id": "alkass-8",
+          "name": "Alkass Sport 8",
+          "url": "http://link4king.xyz:8080/NsIbRaCHiD@2026/puksMLBPBxNo4LR/270722",
+          "backupUrl": null,
+          "logoAssetName": "alk8",
+          "badgeText": "الكاس 8"
+        },
+        {
+          "id": "alkass-9",
+          "name": "Alkass Sport 9",
+          "url": "http://link4king.xyz:8080/NsIbRaCHiD@2026/puksMLBPBxNo4LR/270725",
+          "backupUrl": null,
+          "logoAssetName": "alk9",
+          "badgeText": "الكاس 9"
+        },
+        {
+          "id": "alkass-10",
+          "name": "Alkass Sport 10",
+          "url": "http://link4king.xyz:8080/NsIbRaCHiD@2026/puksMLBPBxNo4LR/270728",
+          "backupUrl": null,
+          "logoAssetName": "alk10",
+          "badgeText": "الكاس 10"
+        }
+      ]
+    },
     {
       "id": "ABUDHABI",
       "name": "Abu Dhabi Sports",
@@ -375,36 +374,38 @@
           "badgeText": "▲ 2"
         },
         {
-                  "name": "Thmanyah 3",
-        "url": "http://legendking.net:8080/yzidalaoui/1EHOeGLDvDas1Ba/236893",
-        "backupUrl": null,
-        "logoAssetName": "thmanyah",
-        "badgeText": "٨ ٣"
-      }
-    ]
-  },
-  {
-        "id": "ALRABIAA",
-    "name": "Alrabiaa Sport",
-    "logoAssetName": "alrabiaa_sport",
-    "badgeText": "الرابعة",
-    "channels": [
-      {
-        "id": "rabiaa-1",
-        "name": "Alrabiaa Sport 1",
-        "url": "http://8k26.site:80/Amerpro1/MS754XT/1027478",
-        "backupUrl": "http://8k26.site:80/Amerpro1/MS754XT/1027478",
-        "logoAssetName": "alr1",
-        "badgeText": "الرابعة 1"
-      },
-      {
-        "id": "rabiaa-2",
-        "name": "Alrabiaa Sport 2",
-        "url": "http://8k26.site:80/Amerpro1/MS754XT/1027477",
-        "backupUrl": "http://8k26.site:80/Amerpro1/MS754XT/1027477",
-        "logoAssetName": "alr2",
-        "badgeText": "الرابعة 2"
-      }
-    ]
-  }
-]
+          "id": "thmanyah-3",
+          "name": "Thmanyah 3",
+          "url": "http://legendking.net:8080/yzidalaoui/1EH0eGLDvDas1Ba/236893",
+          "backupUrl": null,
+          "logoAssetName": "thmanyah",
+          "badgeText": "٨ ٣"
+        }
+      ]
+    },
+    {
+      "id": "ALRABIAA",
+      "name": "Alrabiaa Sport",
+      "logoAssetName": "alrabiaa_sport",
+      "badgeText": "الرابعة",
+      "channels": [
+        {
+          "id": "rabiaa-1",
+          "name": "Alrabiaa Sport 1",
+          "url": "http://8k26.site:80/Amerpro1/MS754XT/1027478",
+          "backupUrl": null,
+          "logoAssetName": "alr1",
+          "badgeText": "الرابعة 1"
+        },
+        {
+          "id": "rabiaa-2",
+          "name": "Alrabiaa Sport 2",
+          "url": "http://8k26.site:80/Amerpro1/MS754XT/1027477",
+          "backupUrl": null,
+          "logoAssetName": "alr2",
+          "badgeText": "الرابعة 2"
+        }
+      ]
+    }
+  ]
+}
