@@ -3838,9 +3838,10 @@ val rabiaaChannels = listOf(
                 active = true
             )
         ),
-        logoAssetName = "alr2",
+                logoAssetName = "alr2",
         badgeText = "الرابعة 2",
-       badgeBg = Color(0xFF001C14)
+        badgeBg = Color(0xFF001C14)
+    )
 )
 
 val sportsMixChannels = listOf(
