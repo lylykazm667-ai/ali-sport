@@ -131,7 +131,7 @@ private const val MATCH_DETAILS_CACHE_PREFIX = "match_details_v2_"
 private const val TEAM_SEASON_CACHE_PREFIX = "team_season_v2_"
 
 enum class CategoryId {
-    BEIN, ALWAN, ALKASS, ABUDHABI, RABIAA4, ALTHMANIA, SPORTS_MIX
+        BEIN, ALWAN, ALKASS, ABUDHABI, ALRABIAA, THMANYAH, SPORTS_MIX
 }
 
 enum class MatchFeedStatus {
@@ -3840,7 +3840,7 @@ val rabiaaChannels = listOf(
         ),
         logoAssetName = "alr2",
         badgeText = "الرابعة 2",
-        badgeBg = Color    )
+       badgeBg = Color(0xFF001C14)
 )
 
 val sportsMixChannels = listOf(
