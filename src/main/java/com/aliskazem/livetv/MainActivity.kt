@@ -3840,10 +3840,83 @@ val rabiaaChannels = listOf(
         ),
         logoAssetName = "alr2",
         badgeText = "الرابعة 2",
-        badgeBg = Color(0xFF0B1C14)
+        badgeBg = Color    )
+)
+
+val sportsMixChannels = listOf(
+    ChannelItem(
+        id = "iraq-sport",
+        name = "العراقية الرياضية",
+        url = "http://195.128.27.253/sf8Yn3Df/kq7XqZy/2020102",
+        backupUrl = "http://195.128.27.253/sf8Yn3Df/kq7XqZy/1509075",
+        logoAssetName = "iraq",
+        badgeText = "IRAQ",
+        badgeBg = Color(0xFF1B5E20),
+        badgeTextColor = Color.White
+    ),
+    ChannelItem(
+        id = "dubai-sport-1",
+        name = "دبي الرياضية 1",
+        url = "http://195.128.27.253/sf8Yn3Df/kq7XqZy/2020171",
+        backupUrl = null,
+        logoAssetName = "dubai",
+        badgeText = "DUBAI 1",
+        badgeBg = Color(0xFF0D47A1),
+        badgeTextColor = Color.White
+    ),
+    ChannelItem(
+        id = "dubai-sport-2",
+        name = "دبي الرياضية 2",
+        url = "http://195.128.27.253/sf8Yn3Df/kq7XqZy/2020170",
+        backupUrl = null,
+        logoAssetName = "dubai",
+        badgeText = "DUBAI 2",
+        badgeBg = Color(0xFF0D47A1),
+        badgeTextColor = Color.White
+    ),
+    ChannelItem(
+        id = "shasha-sport-1",
+        name = "شاشا 1",
+        url = "http://195.128.27.253/sf8Yn3Df/kq7XqZy/2100415",
+        backupUrl = null,
+        logoAssetName = "shasha",
+        badgeText = "SHASHA 1",
+        badgeBg = Color(0xFF311B92),
+        badgeTextColor = Color.White
+    ),
+    ChannelItem(
+        id = "shasha-sport-2",
+        name = "شاشا 2",
+        url = "http://195.128.27.253/sf8Yn3Df/kq7XqZy/2100415",
+        backupUrl = null,
+        logoAssetName = "shasha",
+        badgeText = "SHASHA 2",
+        badgeBg = Color(0xFF311B92),
+        badgeTextColor = Color.White
+    ),
+    ChannelItem(
+        id = "shahid-sport-1",
+        name = "شاهد الرياضية 1",
+        url = "http://195.128.27.253/sf8Yn3Df/kq7XqZy/2095950",
+        backupUrl = null,
+        logoAssetName = "shahid",
+        badgeText = "SHAHID 1",
+        badgeBg = Color(0xFF00695C),
+        badgeTextColor = Color.White
+    ),
+    ChannelItem(
+        id = "shahid-sport-2",
+        name = "شاهد الرياضية 2",
+        url = "http://195.128.27.253/sf8Yn3Df/kq7XqZy/2095951",
+        backupUrl = null,
+        logoAssetName = "shahid",
+        badgeText = "SHAHID 2",
+        badgeBg = Color(0xFF00695C),
+        badgeTextColor = Color.White
     )
-) 
-         val categories = listOf(
+)
+
+val categories = listOf(
             CategoryItem(
                 id = CategoryId.BEIN,
                 name = "bein sport",
@@ -3891,11 +3964,20 @@ val rabiaaChannels = listOf(
         logoAssetName = "alrabiaa_sport",
         badgeText = "ALRABIAA",
         badgeBg = Color(0xFF0B1C14),
-        channels = rabiaaChannels
-    )
+                    channels = rabiaaChannels
+        ),
+        CategoryItem(
+            id = CategoryId.SPORTS_MIX,
+            name = "القنوات الرياضية",
+            logoAssetName = "sport",
+            badgeText = "SPORT",
+            badgeBg = Color(0xFF1B5E20),
+            badgeTextColor = Color.White,
+            channels = sportsMixChannels
+        )
     )
 
-        val todayStr = currentBaghdadTodayKey()
+val todayStr = currentBaghdadTodayKey()
 
         val fallbackMatches = listOf(
             LiveMatchItem(
