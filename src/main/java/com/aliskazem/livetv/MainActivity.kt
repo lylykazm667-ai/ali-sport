@@ -122,7 +122,7 @@ private val SEASONS_TO_TRY = listOf(2026, 2025)
 private const val REMOTE_CHANNELS_JSON_URL =
     "https://raw.githubusercontent.com/lylykazm667-ai/ali-sport/refs/heads/main/channels.json"
 private const val CHANNELS_CACHE_PREFS = "alikazem_channels_cache"
-private const val CHANNELS_CACHE_KEY = "channels_json_v1"
+private const val CHANNELS_CACHE_KEY = "channels_json_v2"
 private const val MATCHES_CACHE_KEY = "matches_feed_cache_v3"
 private const val STANDINGS_CACHE_PREFIX = "standings_cache_v7_"
 private const val SCORERS_CACHE_PREFIX = "scorers_cache_v5_"
